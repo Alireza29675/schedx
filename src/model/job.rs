@@ -1,0 +1,87 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+use super::action::Action;
+use super::run_record::LastRun;
+use super::schedule::JobSchedule;
+
+/// Job status lifecycle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JobStatus {
+    Active,
+    Paused,
+    Completed,
+}
+
+impl std::fmt::Display for JobStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Active => write!(f, "active"),
+            Self::Paused => write!(f, "paused"),
+            Self::Completed => write!(f, "completed"),
+        }
+    }
+}
+
+impl std::str::FromStr for JobStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "active" => Ok(Self::Active),
+            "paused" => Ok(Self::Paused),
+            "completed" => Ok(Self::Completed),
+            other => Err(format!("unknown status: {other}")),
+        }
+    }
+}
+
+/// A scheduled job definition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Job {
+    pub id: String,
+    pub name: Option<String>,
+    pub status: JobStatus,
+    pub schedule_input: String,
+    pub schedule: JobSchedule,
+    pub action: Action,
+    pub timeout_seconds: u64,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_scheduled_at: Option<DateTime<Utc>>,
+    pub last_run: Option<LastRun>,
+    #[serde(default)]
+    pub run_count: u64,
+    /// Number of upcoming scheduled runs to skip (decremented by dispatcher).
+    #[serde(default)]
+    pub skip_remaining: u32,
+}
+
+impl Job {
+    pub fn display_name(&self) -> &str {
+        self.name.as_deref().unwrap_or(&self.id)
+    }
+
+    pub fn is_one_shot(&self) -> bool {
+        self.schedule.is_one_shot()
+    }
+}
+
+/// Top-level state file schema.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobState {
+    pub schema_version: u32,
+    pub jobs: std::collections::BTreeMap<String, Job>,
+}
+
+impl Default for JobState {
+    fn default() -> Self {
+        Self {
+            schema_version: 1,
+            jobs: std::collections::BTreeMap::new(),
+        }
+    }
+}
