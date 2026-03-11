@@ -199,6 +199,10 @@ pub enum Commands {
         /// Trigger type
         #[arg(long, default_value = "scheduled")]
         trigger: String,
+
+        /// Claimed run ID (scheduled runs only)
+        #[arg(long)]
+        run_id: Option<String>,
     },
 }
 

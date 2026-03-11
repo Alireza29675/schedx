@@ -37,6 +37,16 @@ impl std::str::FromStr for JobStatus {
     }
 }
 
+pub const CURRENT_SCHEMA_VERSION: u32 = 2;
+
+/// A scheduled run that has been claimed by the dispatcher but not fully reconciled yet.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InFlightRun {
+    pub run_id: String,
+    pub scheduled_for: DateTime<Utc>,
+    pub claimed_at: DateTime<Utc>,
+}
+
 /// A scheduled job definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -58,6 +68,8 @@ pub struct Job {
     /// Number of upcoming scheduled runs to skip (decremented by dispatcher).
     #[serde(default)]
     pub skip_remaining: u32,
+    #[serde(default)]
+    pub in_flight: Option<InFlightRun>,
 }
 
 impl Job {
@@ -80,7 +92,7 @@ pub struct JobState {
 impl Default for JobState {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: CURRENT_SCHEMA_VERSION,
             jobs: std::collections::BTreeMap::new(),
         }
     }

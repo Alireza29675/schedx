@@ -1,6 +1,8 @@
 use anyhow::Result;
+use chrono::Utc;
 
 use crate::backend;
+use crate::engine::dispatcher;
 use crate::store::paths;
 use crate::store::state;
 
@@ -29,6 +31,18 @@ pub fn execute(json_output: bool) -> Result<()> {
 
     // Clean up stale lock files (non-fcntl artifacts)
     cleanup_stale_locks(&mut messages)?;
+
+    let recovered_claims = dispatcher::recover_stale_claims(Utc::now())?;
+    if recovered_claims > 0 {
+        let noun = if recovered_claims == 1 {
+            "claim"
+        } else {
+            "claims"
+        };
+        messages.push(format!(
+            "Recovered {recovered_claims} stale in-flight {noun}."
+        ));
+    }
 
     // Ensure backend dispatcher
     match backend::detect_backend() {

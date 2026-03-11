@@ -112,6 +112,7 @@ pub fn execute(
         last_run: None,
         run_count: 0,
         skip_remaining: 0,
+        in_flight: None,
     };
 
     // Save under lock

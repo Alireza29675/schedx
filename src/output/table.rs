@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use crate::model::job::{Job, JobStatus};
 use crate::model::run_record::RunRecord;
 use crate::model::schedule::JobSchedule;
-use crate::output::format::compute_next_run;
+use crate::output::format::{compute_next_run, compute_next_run_ignoring_status};
 use crate::output::time::{format_datetime, format_datetime_with_relative, format_duration_short};
 
 /// Build the schedule description line for a job.
@@ -38,27 +38,7 @@ fn looks_like_raw_cron(s: &str) -> bool {
 
 /// Compute next run time ignoring job status (for paused "would run" display).
 fn compute_next_run_raw(job: &Job) -> Option<DateTime<Utc>> {
-    use crate::schedule::parser::{next_cron_time, next_interval_time};
-
-    match &job.schedule {
-        JobSchedule::RecurringCron { expr } => {
-            let after = job.last_scheduled_at.unwrap_or(job.created_at);
-            next_cron_time(expr, after).ok().flatten()
-        }
-        JobSchedule::RecurringInterval { every_seconds } => Some(next_interval_time(
-            *every_seconds,
-            job.last_scheduled_at,
-            job.created_at,
-            Utc::now(),
-        )),
-        JobSchedule::OneShot { fire_at } => {
-            if job.last_scheduled_at.is_none() {
-                Some(*fire_at)
-            } else {
-                None
-            }
-        }
-    }
+    compute_next_run_ignoring_status(job)
 }
 
 /// Build the next-run / status line for a job.

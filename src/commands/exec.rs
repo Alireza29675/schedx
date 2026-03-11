@@ -5,7 +5,12 @@ use crate::engine::executor;
 use crate::model::run_record::Trigger;
 use crate::store::paths;
 
-pub fn execute(job_id: &str, scheduled_for: &str, trigger: &str) -> Result<bool> {
+pub fn execute(
+    job_id: &str,
+    scheduled_for: &str,
+    trigger: &str,
+    run_id: Option<&str>,
+) -> Result<bool> {
     paths::ensure_dirs()?;
 
     let scheduled_for_dt = DateTime::parse_from_rfc3339(scheduled_for)
@@ -16,5 +21,5 @@ pub fn execute(job_id: &str, scheduled_for: &str, trigger: &str) -> Result<bool>
         .parse()
         .map_err(|e| anyhow::anyhow!("Invalid --trigger value: {e}"))?;
 
-    executor::exec_job(job_id, scheduled_for_dt, trigger_val)
+    executor::exec_job_with_run_id(job_id, scheduled_for_dt, trigger_val, run_id)
 }

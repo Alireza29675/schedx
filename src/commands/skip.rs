@@ -4,43 +4,9 @@ use chrono::Utc;
 use crate::commands::get::find_job;
 use crate::engine::lock::FileLock;
 use crate::model::job::JobStatus;
-use crate::output::format::compute_next_run;
+use crate::output::format::compute_next_run_after_skips;
 use crate::output::time::format_datetime_with_relative;
-use crate::schedule::parser::next_cron_time;
 use crate::store::state;
-
-/// Compute the effective next execution time after `n` skips from `start`.
-fn next_run_after_skips(job: &crate::model::job::Job, n: u32) -> Option<chrono::DateTime<Utc>> {
-    use crate::model::schedule::JobSchedule;
-
-    if n == 0 {
-        return compute_next_run(job);
-    }
-
-    match &job.schedule {
-        JobSchedule::RecurringCron { expr } => {
-            let mut cursor = job.last_scheduled_at.unwrap_or(job.created_at);
-            // Advance cursor n+1 times (n skips + 1 for the actual next run)
-            for _ in 0..=n {
-                match next_cron_time(expr, cursor) {
-                    Ok(Some(t)) => cursor = t,
-                    _ => return None,
-                }
-            }
-            Some(cursor)
-        }
-        JobSchedule::RecurringInterval { every_seconds } => {
-            let anchor = job.last_scheduled_at.unwrap_or(job.created_at);
-            let secs = i64::try_from(*every_seconds).unwrap_or(i64::MAX);
-            let total_skip = i64::from(n + 1);
-            Some(anchor + chrono::Duration::seconds(secs * total_skip))
-        }
-        JobSchedule::OneShot { .. } => {
-            // Can't skip one-shot jobs
-            None
-        }
-    }
-}
 
 pub fn execute(id: &str, times: u32, json_output: bool) -> Result<()> {
     let job = find_job(id)?;
@@ -69,7 +35,7 @@ pub fn execute(id: &str, times: u32, json_output: bool) -> Result<()> {
 
     // Compute the effective next execution time (after the skips)
     let new_total = job.skip_remaining + times;
-    let effective_next = next_run_after_skips(&job, new_total);
+    let effective_next = compute_next_run_after_skips(&job, times);
 
     let _lock = FileLock::state()?;
     state::update_state(|s| {

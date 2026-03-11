@@ -21,6 +21,18 @@ const MAX_WEBHOOK_RESPONSE_LOG_BYTES: u64 = 256 * 1024;
 ///
 /// Returns `true` if the schedx process itself should exit 0 (job failure is not schedx failure).
 pub fn exec_job(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) -> Result<bool> {
+    exec_job_with_run_id(job_id, scheduled_for, trigger, None)
+}
+
+/// Execute a single job run.
+///
+/// Returns `true` if the schedx process itself should exit 0 (job failure is not schedx failure).
+pub fn exec_job_with_run_id(
+    job_id: &str,
+    scheduled_for: DateTime<Utc>,
+    trigger: Trigger,
+    scheduled_run_id: Option<&str>,
+) -> Result<bool> {
     let job = state::load_job(job_id)?;
     let Some(job) = job else {
         anyhow::bail!("Job not found: {job_id}");
@@ -30,25 +42,39 @@ pub fn exec_job(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) ->
         return Ok(true);
     }
 
+    if trigger == Trigger::Scheduled {
+        let Some(run_id) = scheduled_run_id else {
+            anyhow::bail!("Missing --run-id for scheduled execution");
+        };
+        let claim_matches = job
+            .in_flight
+            .as_ref()
+            .is_some_and(|claim| claim.run_id == run_id && claim.scheduled_for == scheduled_for);
+        if !claim_matches {
+            return Ok(true);
+        }
+    }
+
     // Try to acquire per-job lock (overlap prevention)
     let Some(_job_lock) = FileLock::job_non_blocking(job_id)? else {
-        // Another instance is running this job — skip
-        let record = RunRecord {
-            run_id: new_run_id(),
-            job_id: job_id.to_string(),
-            trigger,
-            scheduled_for,
-            started_at: Utc::now(),
-            finished_at: Utc::now(),
-            status: RunStatus::SkippedOverlap,
-            exit_code: None,
-            log_path: String::new(),
-        };
-        history::append_record(&record)?;
+        if trigger == Trigger::Manual {
+            let record = RunRecord {
+                run_id: new_run_id(),
+                job_id: job_id.to_string(),
+                trigger,
+                scheduled_for,
+                started_at: Utc::now(),
+                finished_at: Utc::now(),
+                status: RunStatus::SkippedOverlap,
+                exit_code: None,
+                log_path: String::new(),
+            };
+            history::append_record(&record)?;
+        }
         return Ok(true);
     };
 
-    let run_id = new_run_id();
+    let run_id = scheduled_run_id.map_or_else(new_run_id, str::to_string);
     let (log_file, log_path) = logger::create_log_file(job_id, &run_id)?;
     let started_at = Utc::now();
 
@@ -72,7 +98,17 @@ pub fn exec_job(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) ->
     let _lock = FileLock::state()?;
     state::update_state(|s| {
         if let Some(j) = s.jobs.get_mut(job_id) {
-            j.last_scheduled_at = Some(scheduled_for);
+            j.last_scheduled_at = Some(
+                j.last_scheduled_at
+                    .map_or(scheduled_for, |current| current.max(scheduled_for)),
+            );
+            if trigger == Trigger::Scheduled
+                && j.in_flight
+                    .as_ref()
+                    .is_some_and(|claim| claim.run_id == run_id)
+            {
+                j.in_flight = None;
+            }
             j.run_count += 1;
             j.updated_at = Utc::now();
             j.last_run = Some(LastRun {

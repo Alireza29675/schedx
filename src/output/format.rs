@@ -4,8 +4,9 @@ use serde::Serialize;
 use crate::model::action::Action;
 use crate::model::job::Job;
 use crate::model::run_record::RunRecord;
+use crate::model::schedule::JobSchedule;
 use crate::output::time::{format_datetime, format_datetime_with_relative};
-use crate::schedule::parser::next_cron_time;
+use crate::schedule::parser::{latest_due_cron_time, next_cron_time, next_interval_time};
 use crate::util::redact;
 
 /// JSON representation for `schedx list --json`.
@@ -220,31 +221,235 @@ impl HistoryEntry {
 }
 
 pub fn compute_next_run(job: &Job) -> Option<chrono::DateTime<chrono::Utc>> {
-    use crate::model::job::JobStatus;
-    use crate::model::schedule::JobSchedule;
-    use crate::schedule::parser::next_interval_time;
+    compute_next_run_inner(job, true, 0)
+}
 
-    if job.status != JobStatus::Active {
+pub fn compute_next_run_after_skips(
+    job: &Job,
+    extra_skips: u32,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    compute_next_run_inner(job, true, extra_skips)
+}
+
+pub fn compute_next_run_ignoring_status(job: &Job) -> Option<chrono::DateTime<chrono::Utc>> {
+    compute_next_run_inner(job, false, 0)
+}
+
+fn compute_next_run_inner(
+    job: &Job,
+    require_active: bool,
+    extra_skips: u32,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    use crate::model::job::JobStatus;
+
+    if require_active && job.status != JobStatus::Active {
         return None;
     }
 
     match &job.schedule {
-        JobSchedule::RecurringCron { expr } => {
-            let after = job.last_scheduled_at.unwrap_or(job.created_at);
-            next_cron_time(expr, after).ok().flatten()
-        }
-        JobSchedule::RecurringInterval { every_seconds } => Some(next_interval_time(
-            *every_seconds,
-            job.last_scheduled_at,
-            job.created_at,
-            chrono::Utc::now(),
-        )),
         JobSchedule::OneShot { fire_at } => {
-            if job.last_scheduled_at.is_none() {
+            if job.last_scheduled_at.is_none() && job.in_flight.is_none() {
                 Some(*fire_at)
             } else {
                 None
             }
         }
+        JobSchedule::RecurringCron { .. } | JobSchedule::RecurringInterval { .. } => {
+            let now = Utc::now();
+            let mut anchor = scheduling_anchor(job);
+            let mut remaining_skips = job.skip_remaining.saturating_add(extra_skips);
+
+            if job.in_flight.is_some() {
+                for missed_due in due_occurrences_after_anchor(job, anchor, now) {
+                    anchor = missed_due;
+                    remaining_skips = remaining_skips.saturating_sub(1);
+                }
+            } else if let Some(due_now) = latest_due_after_anchor(job, anchor, now) {
+                if remaining_skips == 0 {
+                    return Some(due_now);
+                }
+                remaining_skips -= 1;
+                anchor = due_now;
+            }
+
+            let mut next = next_occurrence_after(job, anchor)?;
+            while remaining_skips > 0 {
+                anchor = next;
+                next = next_occurrence_after(job, anchor)?;
+                remaining_skips -= 1;
+            }
+            Some(next)
+        }
+    }
+}
+
+fn scheduling_anchor(job: &Job) -> chrono::DateTime<chrono::Utc> {
+    let mut anchor = job.last_scheduled_at.unwrap_or(job.created_at);
+    if let Some(claim) = &job.in_flight {
+        if claim.scheduled_for > anchor {
+            anchor = claim.scheduled_for;
+        }
+    }
+    anchor
+}
+
+fn latest_due_after_anchor(
+    job: &Job,
+    anchor: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    match &job.schedule {
+        JobSchedule::RecurringCron { expr } => {
+            latest_due_cron_time(expr, anchor, now).ok().flatten()
+        }
+        JobSchedule::RecurringInterval { every_seconds } => {
+            crate::schedule::parser::interval_is_due(*every_seconds, Some(anchor), anchor, now)
+        }
+        JobSchedule::OneShot { .. } => None,
+    }
+}
+
+fn next_occurrence_after(
+    job: &Job,
+    anchor: chrono::DateTime<chrono::Utc>,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    match &job.schedule {
+        JobSchedule::RecurringCron { expr } => next_cron_time(expr, anchor).ok().flatten(),
+        JobSchedule::RecurringInterval { every_seconds } => Some(next_interval_time(
+            *every_seconds,
+            Some(anchor),
+            anchor,
+            Utc::now(),
+        )),
+        JobSchedule::OneShot { .. } => None,
+    }
+}
+
+fn due_occurrences_after_anchor(
+    job: &Job,
+    anchor: chrono::DateTime<chrono::Utc>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Vec<chrono::DateTime<chrono::Utc>> {
+    match &job.schedule {
+        JobSchedule::RecurringCron { expr } => {
+            let mut due_times = Vec::new();
+            let mut cursor = anchor;
+            while let Ok(Some(next)) = next_cron_time(expr, cursor) {
+                if next > now {
+                    break;
+                }
+                due_times.push(next);
+                cursor = next;
+            }
+            due_times
+        }
+        JobSchedule::RecurringInterval { every_seconds } => {
+            let mut due_times = Vec::new();
+            let secs = i64::try_from(*every_seconds).unwrap_or(i64::MAX);
+            let mut next = anchor + chrono::Duration::seconds(secs);
+            while next <= now {
+                due_times.push(next);
+                next += chrono::Duration::seconds(secs);
+            }
+            due_times
+        }
+        JobSchedule::OneShot { .. } => Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Duration, TimeZone};
+
+    use super::*;
+    use crate::model::action::Action;
+    use crate::model::job::{InFlightRun, Job, JobStatus};
+
+    fn recurring_job(
+        schedule: JobSchedule,
+        created_at: chrono::DateTime<chrono::Utc>,
+        last_scheduled_at: Option<chrono::DateTime<chrono::Utc>>,
+        skip_remaining: u32,
+        in_flight: Option<InFlightRun>,
+    ) -> Job {
+        Job {
+            id: "job".to_string(),
+            name: Some("job".to_string()),
+            status: JobStatus::Active,
+            schedule_input: "schedule".to_string(),
+            schedule,
+            action: Action::Run {
+                command: "echo hi".to_string(),
+                shell: false,
+                workdir: None,
+            },
+            timeout_seconds: 30,
+            tags: Vec::new(),
+            created_at,
+            updated_at: created_at,
+            last_scheduled_at,
+            last_run: None,
+            run_count: 0,
+            skip_remaining,
+            in_flight,
+        }
+    }
+
+    #[test]
+    fn next_run_accounts_for_skip_remaining_when_job_is_due() {
+        let now = Utc::now();
+        let created_at = now - Duration::seconds(25);
+        let job = recurring_job(
+            JobSchedule::RecurringInterval { every_seconds: 10 },
+            created_at,
+            None,
+            1,
+            None,
+        );
+
+        let next_run = compute_next_run(&job).expect("next run");
+        assert!(next_run > now);
+    }
+
+    #[test]
+    fn next_run_anchors_on_in_flight_claim() {
+        let now = Utc::now();
+        let created_at = now - Duration::seconds(40);
+        let claim = InFlightRun {
+            run_id: "r1".to_string(),
+            scheduled_for: now - Duration::seconds(5),
+            claimed_at: now - Duration::seconds(5),
+        };
+        let job = recurring_job(
+            JobSchedule::RecurringInterval { every_seconds: 10 },
+            created_at,
+            Some(now - Duration::seconds(15)),
+            0,
+            Some(claim),
+        );
+
+        let next_run = compute_next_run(&job).expect("next run");
+        assert!(next_run > now);
+    }
+
+    #[test]
+    fn one_shot_with_in_flight_claim_has_no_next_run() {
+        let created_at = Utc.with_ymd_and_hms(2026, 3, 11, 22, 0, 0).unwrap();
+        let claim = InFlightRun {
+            run_id: "r1".to_string(),
+            scheduled_for: created_at + Duration::seconds(10),
+            claimed_at: created_at + Duration::seconds(10),
+        };
+        let job = recurring_job(
+            JobSchedule::OneShot {
+                fire_at: created_at + Duration::seconds(10),
+            },
+            created_at,
+            None,
+            0,
+            Some(claim),
+        );
+
+        assert!(compute_next_run(&job).is_none());
     }
 }

@@ -191,9 +191,11 @@ There are two internal commands that make the scheduler work:
 `_exec` runs a single job. `src/engine/executor.rs`:
 
 - loads the job
+- verifies the matching scheduled claim for scheduled runs
 - takes a per-job non-blocking lock to prevent overlap
 - creates a log file
 - executes one of the three action types
+- clears `in_flight` when the matching scheduled run finishes
 - updates `last_run`, `run_count`, `last_scheduled_at`
 - appends a `RunRecord` to history
 
@@ -375,7 +377,7 @@ If you contribute here, keep these decisions in mind:
 
 - edit [`src/schedule/parser.rs`](../src/schedule/parser.rs)
 - update tests in [`tests/schedule_parse.rs`](../tests/schedule_parse.rs)
-- check that `compute_next_run` still describes the same model
+- check that `compute_next_run` still matches skip handling and any `in_flight` claim behavior
 
 ### Change persistence layout
 

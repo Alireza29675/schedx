@@ -78,7 +78,8 @@ For recurring jobs in `active` state:
 ### 2.3 Overlap policy
 
 - Default concurrency policy: `forbid`
-- If a job is still running when another trigger occurs, new trigger is skipped with history status `skipped_overlap`.
+- If a job is still running when another scheduled trigger occurs, each missed due occurrence is recorded once with history status `skipped_overlap`.
+- Manual `schedx run` still records a single `skipped_overlap` if the job lock is already held.
 - This avoids process pileups and preserves host stability.
 
 ### 2.4 One-shot behavior
@@ -352,7 +353,7 @@ Directory layout:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "jobs": {
     "a1b2c3": {
       "id": "a1b2c3",
@@ -374,6 +375,7 @@ Directory layout:
       "created_at": "2026-02-24T10:00:00Z",
       "updated_at": "2026-02-24T10:00:00Z",
       "last_scheduled_at": "2026-02-24T17:00:00Z",
+      "in_flight": null,
       "last_run": {
         "run_id": "r_01hzy...",
         "started_at": "2026-02-24T17:00:00Z",
@@ -385,6 +387,16 @@ Directory layout:
       "run_count": 42
     }
   }
+}
+```
+
+`in_flight` is either `null` or:
+
+```json
+{
+  "run_id": "r_01hzx...",
+  "scheduled_for": "2026-02-24T18:00:00Z",
+  "claimed_at": "2026-02-24T18:00:00Z"
 }
 ```
 
@@ -550,20 +562,26 @@ fn dispatch(now: DateTime<Utc>) -> Result<()> {
 Pseudocode:
 
 ```rust
-fn exec(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) -> ExitCode {
+fn exec(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger, run_id: Option<&str>) -> ExitCode {
     let job = load_job(job_id)?;
     if job.status != Active { return 0; }
 
-    let Some(_job_lock) = try_lock_job(job_id)? else {
-        append_history(skipped_overlap);
+    if trigger == Scheduled && !job.in_flight.matches(run_id, scheduled_for) {
         return 0;
-    };
+    }
 
-    let run_id = new_run_id();
-    let log_path = create_log_file(job_id, run_id)?;
+    let Some(_job_lock) = try_lock_job(job_id)? else {
+        if trigger == Manual {
+            append_history(skipped_overlap);
+        }
+        return 0;
+    }
+
+    let effective_run_id = run_id.unwrap_or_else(new_run_id);
+    let log_path = create_log_file(job_id, effective_run_id)?;
     let result = execute_action(job, log_path)?; // success|failed|timeout|internal_error
 
-    update_job_after_run(job_id, scheduled_for, result)?;
+    update_job_after_run(job_id, scheduled_for, effective_run_id, result)?;
     append_history(result)?;
 
     if job.is_one_shot() && !result.is_internal_error() {
@@ -574,6 +592,15 @@ fn exec(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) -> ExitCod
     return if result.is_internal_error() { 1 } else { 0 };
 }
 ```
+
+Scheduled dispatch uses a persisted claim flow:
+
+1. `_dispatch` finds the latest due occurrence.
+2. It consumes `skip_remaining` immediately if applicable.
+3. Otherwise it writes `in_flight = { run_id, scheduled_for, claimed_at }` to `jobs.json`.
+4. Then it spawns detached `_exec --run-id <run_id>`.
+5. While the claim exists, later due occurrences are recorded once each as `skipped_overlap`.
+6. `_exec` clears the matching claim when it finishes.
 
 ### 10.3 Action executors
 

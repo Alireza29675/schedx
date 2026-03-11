@@ -89,7 +89,8 @@ fn main() -> ExitCode {
             job_id,
             scheduled_for,
             trigger,
-        } => match commands::exec::execute(job_id, scheduled_for, trigger) {
+            run_id,
+        } => match commands::exec::execute(job_id, scheduled_for, trigger, run_id.as_deref()) {
             Ok(true) => return ExitCode::SUCCESS,
             Ok(false) => return ExitCode::from(1),
             Err(e) => Err(e),

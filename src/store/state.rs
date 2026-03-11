@@ -2,7 +2,7 @@ use std::fs;
 
 use anyhow::{Context, Result};
 
-use crate::model::job::{Job, JobState};
+use crate::model::job::{CURRENT_SCHEMA_VERSION, Job, JobState};
 use crate::store::backup;
 
 use super::atomic::atomic_write_json;
@@ -24,13 +24,15 @@ pub fn load_state() -> Result<JobState> {
 /// Save the job state to disk atomically, creating a backup first.
 pub fn save_state(state: &JobState) -> Result<()> {
     let path = paths::jobs_file()?;
+    let mut normalized = state.clone();
+    normalized.schema_version = CURRENT_SCHEMA_VERSION;
 
     // Backup existing file before overwrite
     if path.exists() {
         backup::create_backup(&path)?;
     }
 
-    atomic_write_json(&path, state).context("failed to save job state")?;
+    atomic_write_json(&path, &normalized).context("failed to save job state")?;
     Ok(())
 }
 
