@@ -8,14 +8,6 @@ The project is pre-1.0 and uses semantic versioning. Breaking changes can still 
 
 ## Install
 
-Homebrew:
-
-```bash
-brew install schedx
-```
-
-This exact command works after `schedx` is accepted into `homebrew/core`. Until then, use one of the installation methods below.
-
 From source with Cargo:
 
 ```bash
