@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>schedx Repository Tour</title>
+    <style>
+      :root {
+        --bg: #f4efe5;
+        --ink: #17202a;
+        --muted: #5f6b76;
+        --accent: #0f4c81;
+        --accent-soft: #d8e6f3;
+        --card: rgba(255, 255, 255, 0.8);
+        --border: rgba(15, 76, 129, 0.18);
+        --shadow: 0 18px 60px rgba(23, 32, 42, 0.12);
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top right, rgba(15, 76, 129, 0.12), transparent 28%),
+          radial-gradient(circle at bottom left, rgba(189, 120, 48, 0.12), transparent 24%),
+          var(--bg);
+        color: var(--ink);
+        font-family:
+          "Iowan Old Style",
+          "Palatino Linotype",
+          "Book Antiqua",
+          "URW Palladio L",
+          Georgia,
+          serif;
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      .fallback {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+        color: var(--muted);
+      }
+
+      .step {
+        width: 1050px;
+        min-height: 640px;
+        box-sizing: border-box;
+        padding: 40px 48px;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: var(--card);
+        box-shadow: var(--shadow);
+      }
+
+      .step h1,
+      .step h2,
+      .step h3 {
+        margin: 0 0 18px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+
+      .step h1 {
+        font-size: 64px;
+      }
+
+      .step h2 {
+        font-size: 44px;
+      }
+
+      .step h3 {
+        font-size: 26px;
+        color: var(--accent);
+      }
+
+      .lead {
+        font-size: 26px;
+        line-height: 1.45;
+        max-width: 820px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        margin-top: 18px;
+      }
+
+      .panel {
+        padding: 22px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(23, 32, 42, 0.08);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 24px;
+        font-size: 24px;
+        line-height: 1.5;
+      }
+
+      li + li {
+        margin-top: 10px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 18px 20px;
+        overflow: auto;
+        border-radius: 16px;
+        background: #13202d;
+        color: #f6f8fa;
+        font-size: 18px;
+        line-height: 1.45;
+        font-family:
+          "JetBrains Mono",
+          "SFMono-Regular",
+          "Cascadia Code",
+          "Menlo",
+          monospace;
+      }
+
+      code {
+        font-family:
+          "JetBrains Mono",
+          "SFMono-Regular",
+          "Cascadia Code",
+          "Menlo",
+          monospace;
+      }
+
+      .path-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px 28px;
+        margin-top: 18px;
+      }
+
+      .path-list div {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: rgba(216, 230, 243, 0.55);
+        font-size: 22px;
+      }
+
+      .path-list strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--accent);
+      }
+
+      .accent {
+        color: var(--accent);
+      }
+
+      .small {
+        font-size: 18px;
+        color: var(--muted);
+      }
+
+      .mermaid {
+        margin-top: 14px;
+      }
+
+      .impress-enabled .fallback {
+        display: none;
+      }
+
+      .impress-enabled .step {
+        opacity: 0.3;
+        transition: opacity 0.35s ease;
+      }
+
+      .impress-enabled .step.active {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fallback">
+      Open this file in a browser with internet access so it can load Mermaid and impress.js from CDNs.
+    </div>
+
+    <div id="impress">
+      <div class="step" data-x="0" data-y="0" data-scale="1.1">
+        <h1>Inside <span class="accent">schedx</span></h1>
+        <p class="lead">
+          A repository tour for contributors: what the tool does, how a command flows through the
+          codebase, where state lives, and where to edit when you want to change behavior.
+        </p>
+        <div class="grid">
+          <div class="panel">
+            <h3>Core idea</h3>
+            <p class="lead" style="font-size: 22px">
+              `schedx` is a local-first scheduler CLI for commands, prompts, and webhooks.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>What to remember</h3>
+            <ul>
+              <li>CLI front door</li>
+              <li>file-backed state</li>
+              <li>backend-provided ticks</li>
+              <li>single execution engine</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" data-x="1300" data-y="-60" data-rotate="2">
+        <h2>Repository Map</h2>
+        <div class="path-list">
+          <div><strong>src/commands</strong> user-facing command handlers</div>
+          <div><strong>src/engine</strong> dispatch, execution, locks, logs</div>
+          <div><strong>src/store</strong> files, atomic writes, history, backups</div>
+          <div><strong>src/schedule</strong> parse and compute due times</div>
+          <div><strong>src/model</strong> serializable domain types</div>
+          <div><strong>src/backend</strong> systemd, launchd, none</div>
+          <div><strong>src/output</strong> human and JSON formatting</div>
+          <div><strong>tests</strong> CLI-first integration coverage</div>
+        </div>
+      </div>
+
+      <div class="step" data-x="2620" data-y="-160" data-rotate="5">
+        <h2>The Whole System in One Diagram</h2>
+        <div class="mermaid">
+flowchart LR
+    U["User or Agent"] --> CLI["Clap CLI"]
+    CLI --> CMD["commands/*"]
+    CMD --> STORE["store/*"]
+    CMD --> BACKEND["backend/*"]
+    STORE --> DISPATCH["engine/dispatcher.rs"]
+    BACKEND --> DISPATCH
+    DISPATCH --> EXEC["engine/executor.rs"]
+    EXEC --> LOGS["logs + history + last_run"]
+        </div>
+      </div>
+
+      <div class="step" data-x="3880" data-y="-40" data-rotate="0" data-scale="1.05">
+        <h2>How `schedx add` Works</h2>
+        <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Main as main.rs
+    participant Add as commands/add.rs
+    participant Parser as schedule/parser.rs
+    participant Store as store/state.rs
+    participant Backend as backend/*
+
+    User->>Main: schedx add ...
+    Main->>Add: execute(...)
+    Add->>Parser: parse_schedule(...)
+    Add->>Store: update_state(...)
+    Add->>Backend: ensure_dispatcher()
+    Add-->>User: created job + next run
+        </div>
+        <p class="small">
+          The command handler validates flags, builds an `Action`, parses the schedule, writes
+          state under lock, and then tries to install or heal the tick backend.
+        </p>
+      </div>
+
+      <div class="step" data-x="5160" data-y="30" data-rotate="-4">
+        <h2>CLI Routing Is Intentionally Thin</h2>
+        <pre><code>let cli = Cli::parse();
+
+let result = match &amp;cli.command {
+    Commands::Add { .. } =&gt; commands::add::execute(...),
+    Commands::List { .. } =&gt; commands::list::execute(...),
+    Commands::Run { id } =&gt; commands::run::execute(id),
+    Commands::Dispatch =&gt; commands::dispatch::execute(),
+    Commands::Exec { .. } =&gt; commands::exec::execute(...),
+};</code></pre>
+        <p class="small">
+          This is a repository habit worth preserving: keep `main.rs` boring and push behavior into
+          focused modules.
+        </p>
+      </div>
+
+      <div class="step" data-x="6480" data-y="-120" data-rotate="-8">
+        <h2>Dispatch and Execution</h2>
+        <div class="mermaid">
+flowchart TD
+    TICK["systemd / launchd / daemon"] --> D["_dispatch"]
+    D --> DUE{"Job due?"}
+    DUE -- no --> NEXT["Check next job"]
+    DUE -- yes --> SKIP{"skip_remaining > 0?"}
+    SKIP -- yes --> ADV["Advance without executing"]
+    SKIP -- no --> EXEC["_exec"]
+    EXEC --> LOCK["Per-job lock"]
+    LOCK --> ACTION["Run / Prompt / Webhook"]
+    ACTION --> STATE["Update last_run and counters"]
+    ACTION --> HIST["Append history"]
+    ACTION --> LOG["Write log file"]
+        </div>
+      </div>
+
+      <div class="step" data-x="7820" data-y="-20" data-rotate="-3">
+        <h2>Persistence Model</h2>
+        <pre><code>~/.schedx/
+  jobs.json
+  config.json
+  run-history.jsonl
+  backups/
+  logs/
+  locks/</code></pre>
+        <div class="grid">
+          <div class="panel">
+            <h3>jobs.json</h3>
+            <p class="lead" style="font-size: 20px">authoritative job definitions + last-run summary</p>
+          </div>
+          <div class="panel">
+            <h3>run-history.jsonl</h3>
+            <p class="lead" style="font-size: 20px">append-only audit trail of completed and skipped runs</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" data-x="9140" data-y="10" data-rotate="3">
+        <h2>Action Types</h2>
+        <div class="grid">
+          <div class="panel">
+            <h3>Run</h3>
+            <ul>
+              <li>shell or argv mode</li>
+              <li>optional workdir</li>
+              <li>stdout/stderr to log file</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Prompt</h3>
+            <ul>
+              <li>named agent profile</li>
+              <li>stdin or argv prompt mode</li>
+              <li>same timeout/log rules as commands</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Webhook</h3>
+            <ul>
+              <li>typed HTTP method</li>
+              <li>HTTPS by default</li>
+              <li>bounded response logging</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Common rule</h3>
+            <ul>
+              <li>one execution engine</li>
+              <li>one run record model</li>
+              <li>one log/history path</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" data-x="10480" data-y="-110" data-rotate="7">
+        <h2>Backends</h2>
+        <ul>
+          <li><code>systemd</code> on Linux</li>
+          <li><code>launchd</code> on macOS</li>
+          <li><code>none</code> for manual daemon/test mode</li>
+        </ul>
+        <p class="lead" style="font-size: 22px">
+          The backend only provides the heartbeat. The due-job logic stays inside Rust, in the
+          dispatcher.
+        </p>
+      </div>
+
+      <div class="step" data-x="11820" data-y="40" data-rotate="0">
+        <h2>Tests Tell the Story</h2>
+        <pre><code>pub fn cmd(&amp;self) -&gt; assert_cmd::Command {
+    let mut cmd = assert_cmd::Command::cargo_bin("schedx").unwrap();
+    cmd.env("SCHEDX_HOME", self.home());
+    cmd.env("SCHEDX_BACKEND", "none");
+    cmd
+}</code></pre>
+        <p class="small">
+          Tests create an isolated scheduler home, disable system backends, and exercise the real
+          binary. That keeps them close to user behavior.
+        </p>
+      </div>
+
+      <div class="step" data-x="13100" data-y="-40" data-rotate="-5">
+        <h2>Where to Edit</h2>
+        <div class="grid">
+          <div class="panel">
+            <h3>New command</h3>
+            <ul>
+              <li><code>src/cli.rs</code></li>
+              <li><code>src/main.rs</code></li>
+              <li><code>src/commands/&lt;name&gt;.rs</code></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>New action type</h3>
+            <ul>
+              <li><code>src/model/action.rs</code></li>
+              <li><code>src/commands/add.rs</code></li>
+              <li><code>src/engine/executor.rs</code></li>
+              <li><code>src/output/format.rs</code></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Schedule changes</h3>
+            <ul>
+              <li><code>src/schedule/parser.rs</code></li>
+              <li><code>tests/schedule_parse.rs</code></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Storage changes</h3>
+            <ul>
+              <li><code>src/store/paths.rs</code></li>
+              <li><code>src/store/state.rs</code></li>
+              <li><code>src/store/history.rs</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="step" data-x="14440" data-y="0" data-scale="1.2">
+        <h2>First-Day Contributor Checklist</h2>
+        <ul>
+          <li>Read <code>src/main.rs</code>, <code>src/cli.rs</code>, <code>src/commands/add.rs</code></li>
+          <li>Follow a job through <code>dispatcher.rs</code> and <code>executor.rs</code></li>
+          <li>Inspect files under <code>SCHEDX_HOME</code> after running the CLI locally</li>
+          <li>Use the CLI tests as your behavior contract</li>
+          <li>Preserve the separation between commands, engine, store, and output</li>
+        </ul>
+        <p class="lead" style="font-size: 22px">
+          The one-line summary: <span class="accent">local-first scheduling engine, CLI front
+          door, backend heartbeat, single executor.</span>
+        </p>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/impress.js@1.1.0/js/impress.min.js"></script>
+    <script>
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "base",
+        themeVariables: {
+          primaryColor: "#d8e6f3",
+          primaryTextColor: "#17202a",
+          primaryBorderColor: "#0f4c81",
+          lineColor: "#0f4c81",
+          secondaryColor: "#f6f1ea",
+          tertiaryColor: "#ffffff",
+          fontFamily:
+            '"Iowan Old Style","Palatino Linotype","Book Antiqua","URW Palladio L",Georgia,serif',
+        },
+      });
+
+      window.addEventListener("DOMContentLoaded", async () => {
+        await mermaid.run({ querySelector: ".mermaid" });
+        if (window.impress) {
+          window.impress().init();
+        }
+      });
+    </script>
+  </body>
+</html>

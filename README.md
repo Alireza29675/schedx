@@ -56,7 +56,7 @@ schedx logs <job-id>
 
 ## Security
 
-- local state is stored under `~/.sched` or `SCHED_HOME`
+- local state is stored under `~/.schedx` or `SCHEDX_HOME`
 - config, locks, logs, and backups are created with owner-only permissions on Unix
 - insecure `http://` webhooks are blocked by default
 - webhook URLs and sensitive headers are redacted in structured output
@@ -72,3 +72,8 @@ Security reporting guidance lives in [SECURITY.md](SECURITY.md).
 - crates.io is published from the same tagged release
 
 The detailed process is documented in [docs/RELEASING.md](docs/RELEASING.md).
+
+## Learn the Codebase
+
+- Contributor guide: [docs/ONBOARDING.md](docs/ONBOARDING.md)
+- Presentation deck: [docs/presentation/index.html](docs/presentation/index.html)
