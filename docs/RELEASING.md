@@ -25,9 +25,21 @@ The workflow:
 2. creates a draft GitHub Release
 3. builds release binaries for Linux, macOS, and Windows
 4. uploads tarballs and a combined `checksums.txt`
-5. attaches `install.sh` and `install.ps1`
-6. publishes the crate to crates.io
-7. publishes the GitHub Release after the crate publish succeeds
+5. generates a `schedx.rb` Homebrew formula artifact for the tagged source archive
+6. attaches `install.sh`, `install.ps1`, and the Homebrew formula
+7. publishes the crate to crates.io unless that version already exists there
+8. publishes the GitHub Release after the crate publish step succeeds or is skipped
+
+## Homebrew
+
+To get `brew install schedx`, the formula must be merged into `homebrew/core`. That is an external repository and cannot be completed from this repository alone.
+
+The release workflow generates a ready-to-review `schedx.rb` formula artifact for each tag. The normal path is:
+
+1. tag and push the release
+2. download the generated `schedx.rb` from the GitHub Release
+3. submit that formula in a PR to `Homebrew/homebrew-core`
+4. after merge, users can install with `brew install schedx`
 
 ## Install and Update Policy
 
