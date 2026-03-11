@@ -2,12 +2,12 @@
 
 > This document is the implementation contract for `schedx`.
 >
-> Historical note: parts of this spec still use the earlier working name `sched`. Those command examples map directly to the current binary name, `schedx`.
+> Historical note: parts of this spec still use the earlier working name `schedx`. Those command examples map directly to the current binary name, `schedx`.
 > The goal is to hand this file to an autonomous coding agent and get a secure, reliable, useful OSS CLI.
 
 ## 0) Product Goal
 
-`sched` is a standalone Rust CLI that schedules commands, agent prompts, and webhooks.
+`schedx` is a standalone Rust CLI that schedules commands, agent prompts, and webhooks.
 
 Core product goals:
 
@@ -70,10 +70,10 @@ This section is normative.
 
 For recurring jobs in `active` state:
 
-1. A `sched` process crash must not delete or disable the schedule.
+1. A `schedx` process crash must not delete or disable the schedule.
 2. A machine reboot must not require re-adding jobs.
-3. If `sched` misses ticks while offline, it must catch up on next dispatch tick with policy `catch_up = latest` (run once for the latest due time, not one run per missed interval).
-4. Backend drift (missing/modified systemd units) must be fixable by `sched repair` and auto-healed on mutating commands.
+3. If `schedx` misses ticks while offline, it must catch up on next dispatch tick with policy `catch_up = latest` (run once for the latest due time, not one run per missed interval).
+4. Backend drift (missing/modified systemd units) must be fixable by `schedx repair` and auto-healed on mutating commands.
 
 ### 2.3 Overlap policy
 
@@ -135,7 +135,7 @@ Reject beyond limits with actionable errors.
 
 `systemd` is used to trigger a **single dispatcher tick every minute**:
 
-- `sched _dispatch` runs on each tick
+- `schedx _dispatch` runs on each tick
 - `_dispatch` determines due jobs from `jobs.json`
 - `_dispatch` launches `_exec <job-id> --scheduled-for <ts>` for due jobs
 - `_exec` runs one job, writes logs/history, updates state
@@ -172,7 +172,7 @@ Global flags:
 #### add
 
 ```bash
-sched add <schedule> (--run <cmd> | --prompt <text> | --webhook <url>) [options]
+schedx add <schedule> (--run <cmd> | --prompt <text> | --webhook <url>) [options]
 ```
 
 Options:
@@ -198,19 +198,19 @@ Validation:
 #### list
 
 ```bash
-sched list [--status active|paused|completed] [--tag <tag>] [--json]
+schedx list [--status active|paused|completed] [--tag <tag>] [--json]
 ```
 
 #### get
 
 ```bash
-sched get <id> [--json]
+schedx get <id> [--json]
 ```
 
 #### run
 
 ```bash
-sched run <id>
+schedx run <id>
 ```
 
 Runs job immediately (`trigger = manual`) without changing schedule state.
@@ -218,20 +218,20 @@ Runs job immediately (`trigger = manual`) without changing schedule state.
 #### rm
 
 ```bash
-sched rm <id> [--force]
+schedx rm <id> [--force]
 ```
 
 #### pause / resume
 
 ```bash
-sched pause <id>
-sched resume <id>
+schedx pause <id>
+schedx resume <id>
 ```
 
 #### logs
 
 ```bash
-sched logs <id> [--run <run-id>] [--lines <n>]
+schedx logs <id> [--run <run-id>] [--lines <n>]
 ```
 
 - Default: latest run log for job
@@ -239,24 +239,24 @@ sched logs <id> [--run <run-id>] [--lines <n>]
 #### history
 
 ```bash
-sched history [id] [--limit <n>] [--json]
+schedx history [id] [--limit <n>] [--json]
 ```
 
 #### agent
 
 ```bash
-sched agent add <name> --bin <path> [--arg <arg> ...] [--prompt-stdin]
-sched agent rm <name>
-sched agent list [--json]
-sched agent default <name>
+schedx agent add <name> --bin <path> [--arg <arg> ...] [--prompt-stdin]
+schedx agent rm <name>
+schedx agent list [--json]
+schedx agent default <name>
 ```
 
 #### config
 
 ```bash
-sched config
-sched config <key>
-sched config <key> <value>
+schedx config
+schedx config <key>
+schedx config <key> <value>
 ```
 
 Supported keys in v0.1:
@@ -270,7 +270,7 @@ Supported keys in v0.1:
 #### repair
 
 ```bash
-sched repair [--json]
+schedx repair [--json]
 ```
 
 Reconciles backend + state:
@@ -281,8 +281,8 @@ Reconciles backend + state:
 
 #### hidden commands
 
-- `sched _dispatch`
-- `sched _exec <job-id> --scheduled-for <rfc3339> --trigger <scheduled|manual>`
+- `schedx _dispatch`
+- `schedx _exec <job-id> --scheduled-for <rfc3339> --trigger <scheduled|manual>`
 
 ---
 
@@ -327,13 +327,13 @@ Notes:
 
 ### 7.1 Storage path
 
-- If `SCHED_HOME` set: use it
-- Else: `~/.sched`
+- If `SCHEDX_HOME` set: use it
+- Else: `~/.schedx`
 
 Directory layout:
 
 ```text
-~/.sched/
+~/.schedx/
   jobs.json
   config.json
   run-history.jsonl
@@ -465,7 +465,7 @@ Before overwrite, copy previous `jobs.json` into `backups/` and rotate to `backu
 
 Backend selection:
 
-1. If `SCHED_BACKEND` set, honor it (`systemd` or `none`)
+1. If `SCHEDX_BACKEND` set, honor it (`systemd` or `none`)
 2. Else autodetect:
    - if Linux + `systemctl --user` works -> `systemd`
    - otherwise error with actionable message
@@ -474,7 +474,7 @@ Backend selection:
 
 To guarantee user-level timers after reboot, lingering must be enabled.
 
-`sched add`/`repair` on systemd backend must check linger status.
+`schedx add`/`repair` on systemd backend must check linger status.
 
 If not enabled, fail with message:
 
@@ -487,29 +487,29 @@ Run: sudo loginctl enable-linger <your-user>
 
 Service path:
 
-- `~/.config/systemd/user/sched-dispatch.service`
+- `~/.config/systemd/user/schedx-dispatch.service`
 
 Timer path:
 
-- `~/.config/systemd/user/sched-dispatch.timer`
+- `~/.config/systemd/user/schedx-dispatch.timer`
 
-`sched-dispatch.service`:
+`schedx-dispatch.service`:
 
 - `Type=oneshot`
-- `ExecStart=<absolute-path-to-sched> _dispatch`
+- `ExecStart=<absolute-path-to-schedxx> _dispatch`
 
-`sched-dispatch.timer`:
+`schedx-dispatch.timer`:
 
 - `OnCalendar=*-*-* *:*:00`
 - `Persistent=true`
 - `AccuracySec=1s`
-- `Unit=sched-dispatch.service`
+- `Unit=schedx-dispatch.service`
 
 Install/update flow:
 
 1. write/update unit files
 2. `systemctl --user daemon-reload`
-3. `systemctl --user enable --now sched-dispatch.timer`
+3. `systemctl --user enable --now schedx-dispatch.timer`
 
 `repair` re-runs this idempotently.
 
@@ -570,7 +570,7 @@ fn exec(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) -> ExitCod
         mark_completed(job_id)?;
     }
 
-    // important: job command failure is not a sched internal failure
+    // important: job command failure is not a schedx internal failure
     return if result.is_internal_error() { 1 } else { 0 };
 }
 ```
@@ -623,7 +623,7 @@ Removed job health-check (a1b2c3)
 - UTF-8 JSON
 - empty lists are `[]`
 
-`sched list --json` returns array of:
+`schedx list --json` returns array of:
 
 ```json
 {
@@ -670,7 +670,7 @@ Accepted examples: 'in 4h', 'every 30m', '0 9 * * 1-5', '2026-03-01T14:00:00Z'
 ## 13) Project Layout
 
 ```text
-sched/
+schedx/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
@@ -756,20 +756,20 @@ sched/
 
 ```toml
 [package]
-name = "sched"
+name = "schedx"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
 description = "Secure and reliable scheduler CLI for commands, prompts, and webhooks"
 license = "MIT"
-repository = "https://github.com/user/sched"
-homepage = "https://github.com/user/sched"
+repository = "https://github.com/Alireza29675/schedxx"
+homepage = "https://github.com/Alireza29675/schedxx"
 readme = "README.md"
 keywords = ["scheduler", "cron", "cli", "automation", "agent"]
 categories = ["command-line-utilities"]
 
 [[bin]]
-name = "sched"
+name = "schedx"
 path = "src/main.rs"
 
 [dependencies]
@@ -861,8 +861,8 @@ Pipeline:
 
 1. build binaries (`cargo build --release --locked` or `cross` for aarch64)
 2. package tarballs:
-   - `sched-x86_64-unknown-linux-gnu.tar.gz`
-   - `sched-aarch64-unknown-linux-gnu.tar.gz`
+   - `schedx-x86_64-unknown-linux-gnu.tar.gz`
+   - `schedx-aarch64-unknown-linux-gnu.tar.gz`
 3. generate `checksums.txt` (sha256)
 4. create GitHub release with assets + checksums
 5. publish crate to crates.io
@@ -886,7 +886,7 @@ Security requirements:
 
 Behavior:
 
-- install into `${SCHED_INSTALL_DIR:-$HOME/.local/bin}`
+- install into `${SCHEDX_INSTALL_DIR:-$HOME/.local/bin}`
 - print final path and PATH hint
 
 ---
@@ -895,8 +895,8 @@ Behavior:
 
 ### 17.1 Test environment
 
-- all tests must respect `SCHED_HOME`
-- for most integration tests set `SCHED_BACKEND=none`
+- all tests must respect `SCHEDX_HOME`
+- for most integration tests set `SCHEDX_BACKEND=none`
 
 ### 17.2 Required integration tests
 
@@ -944,23 +944,23 @@ Before `v0.1.0` tag, all must pass:
 4. manual smoke test with real systemd backend:
 
 ```bash
-export SCHED_HOME="$(mktemp -d)"
-unset SCHED_BACKEND
+export SCHEDX_HOME="$(mktemp -d)"
+unset SCHEDX_BACKEND
 
-sched repair
-sched agent add demo --bin echo --arg AGENT:
-sched agent default demo
+schedx repair
+schedx agent add demo --bin echo --arg AGENT:
+schedx agent default demo
 
-sched add "every 1m" --run "echo hello" --name hello-job
-sched list
+schedx add "every 1m" --run "echo hello" --name hello-job
+schedx list
 
 # wait >= 70 seconds
-sched history hello-job
-sched logs hello-job
+schedx history hello-job
+schedx logs hello-job
 
-sched pause hello-job
-sched resume hello-job
-sched rm hello-job --force
+schedx pause hello-job
+schedx resume hello-job
+schedx rm hello-job --force
 ```
 
 5. installer script verifies checksums and installs binary correctly

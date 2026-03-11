@@ -27,8 +27,8 @@ impl SystemdBackend {
             .is_ok()
     }
 
-    fn sched_binary_path() -> Result<PathBuf> {
-        std::env::current_exe().context("could not determine sched binary path")
+    fn schedx_binary_path() -> Result<PathBuf> {
+        std::env::current_exe().context("could not determine schedx binary path")
     }
 
     fn service_path(&self) -> PathBuf {
@@ -40,8 +40,8 @@ impl SystemdBackend {
     }
 
     fn write_units(&self) -> Result<()> {
-        let sched_bin = Self::sched_binary_path()?;
-        let sched_path = sched_bin.display();
+        let schedx_bin = Self::schedx_binary_path()?;
+        let schedx_path = schedx_bin.display();
 
         fs::create_dir_all(&self.unit_dir).with_context(|| {
             format!(
@@ -57,7 +57,7 @@ Description=schedx dispatcher tick
 
 [Service]
 Type=oneshot
-ExecStart={sched_path} _dispatch
+ExecStart={schedx_path} _dispatch
 "
         );
 

@@ -30,7 +30,7 @@ pub struct BackendHealth {
 /// Detect and return the appropriate backend.
 pub fn detect_backend() -> Result<Box<dyn Backend>> {
     // Check env override first
-    if let Ok(val) = std::env::var("SCHED_BACKEND") {
+    if let Ok(val) = std::env::var("SCHEDX_BACKEND") {
         return match val.as_str() {
             "none" => Ok(Box::new(none::NoneBackend)),
             "systemd" => Ok(Box::new(systemd::SystemdBackend::new()?)),
@@ -56,6 +56,6 @@ pub fn detect_backend() -> Result<Box<dyn Backend>> {
         "Error: No supported scheduling backend detected.\n\
          On Linux, ensure systemd is available.\n\
          On macOS, launchd should be available by default.\n\
-         Set SCHED_BACKEND=none for manual/daemon mode."
+         Set SCHEDX_BACKEND=none for manual/daemon mode."
     )
 }

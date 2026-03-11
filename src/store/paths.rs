@@ -2,38 +2,38 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-/// Resolve the sched home directory.
-/// Priority: `SCHED_HOME` env var > `~/.sched`.
-pub fn sched_home() -> Result<PathBuf> {
-    if let Ok(home) = std::env::var("SCHED_HOME") {
+/// Resolve the schedx home directory.
+/// Priority: `SCHEDX_HOME` env var > `~/.schedx`.
+pub fn schedx_home() -> Result<PathBuf> {
+    if let Ok(home) = std::env::var("SCHEDX_HOME") {
         return Ok(PathBuf::from(home));
     }
     let home = dirs::home_dir().context("could not determine home directory")?;
-    Ok(home.join(".sched"))
+    Ok(home.join(".schedx"))
 }
 
 pub fn jobs_file() -> Result<PathBuf> {
-    Ok(sched_home()?.join("jobs.json"))
+    Ok(schedx_home()?.join("jobs.json"))
 }
 
 pub fn config_file() -> Result<PathBuf> {
-    Ok(sched_home()?.join("config.json"))
+    Ok(schedx_home()?.join("config.json"))
 }
 
 pub fn history_file() -> Result<PathBuf> {
-    Ok(sched_home()?.join("run-history.jsonl"))
+    Ok(schedx_home()?.join("run-history.jsonl"))
 }
 
 pub fn backups_dir() -> Result<PathBuf> {
-    Ok(sched_home()?.join("backups"))
+    Ok(schedx_home()?.join("backups"))
 }
 
 pub fn logs_dir() -> Result<PathBuf> {
-    Ok(sched_home()?.join("logs"))
+    Ok(schedx_home()?.join("logs"))
 }
 
 pub fn locks_dir() -> Result<PathBuf> {
-    Ok(sched_home()?.join("locks"))
+    Ok(schedx_home()?.join("locks"))
 }
 
 pub fn job_log_dir(job_id: &str) -> Result<PathBuf> {
@@ -54,7 +54,7 @@ pub fn job_lock_path(job_id: &str) -> Result<PathBuf> {
 
 /// Ensure the full directory hierarchy exists with secure permissions.
 pub fn ensure_dirs() -> Result<()> {
-    let home = sched_home()?;
+    let home = schedx_home()?;
     for dir in [
         home.clone(),
         home.join("backups"),

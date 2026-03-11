@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 
-/// Create a fresh test environment with its own `SCHED_HOME`.
+/// Create a fresh test environment with its own `SCHEDX_HOME`.
 pub struct TestEnv {
     pub dir: TempDir,
 }
@@ -18,12 +18,12 @@ impl TestEnv {
         self.dir.path().to_path_buf()
     }
 
-    /// Get a Command preconfigured with `SCHED_HOME` and `SCHED_BACKEND=none`.
+    /// Get a Command preconfigured with `SCHEDX_HOME` and `SCHEDX_BACKEND=none`.
     #[allow(deprecated)]
     pub fn cmd(&self) -> assert_cmd::Command {
         let mut cmd = assert_cmd::Command::cargo_bin("schedx").expect("binary not found");
-        cmd.env("SCHED_HOME", self.home());
-        cmd.env("SCHED_BACKEND", "none");
+        cmd.env("SCHEDX_HOME", self.home());
+        cmd.env("SCHEDX_BACKEND", "none");
         cmd
     }
 }

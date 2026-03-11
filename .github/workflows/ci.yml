@@ -10,7 +10,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  SCHED_BACKEND: none
+  SCHEDX_BACKEND: none
 
 jobs:
   lint:

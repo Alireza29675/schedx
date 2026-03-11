@@ -23,7 +23,7 @@ impl LaunchdBackend {
         Command::new("launchctl").arg("version").output().is_ok()
     }
 
-    fn sched_binary_path() -> Result<PathBuf> {
+    fn schedx_binary_path() -> Result<PathBuf> {
         // Try the well-known install location first, then fall back to current_exe
         let well_known = dirs::home_dir().map(|h| h.join(".local/bin/schedx"));
 
@@ -37,8 +37,8 @@ impl LaunchdBackend {
     }
 
     fn write_plist(&self) -> Result<()> {
-        let sched_bin = Self::sched_binary_path()?;
-        let sched_path = sched_bin.display();
+        let schedx_bin = Self::schedx_binary_path()?;
+        let schedx_path = schedx_bin.display();
 
         // Ensure the LaunchAgents directory exists
         if let Some(parent) = self.plist_path.parent() {
@@ -50,7 +50,7 @@ impl LaunchdBackend {
             })?;
         }
 
-        let log_dir = crate::store::paths::sched_home()?;
+        let log_dir = crate::store::paths::schedx_home()?;
         let stdout_log = log_dir.join("daemon-stdout.log");
         let stderr_log = log_dir.join("daemon-stderr.log");
 
@@ -65,7 +65,7 @@ impl LaunchdBackend {
     <string>{PLIST_LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{sched_path}</string>
+        <string>{schedx_path}</string>
         <string>_dispatch</string>
     </array>
     <key>StartInterval</key>

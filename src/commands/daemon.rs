@@ -19,7 +19,7 @@ pub fn execute(interval: Option<u64>) -> Result<()> {
         bail!("Error: Interval must be greater than zero.");
     }
 
-    let pid_path = paths::sched_home()?.join("daemon.pid");
+    let pid_path = paths::schedx_home()?.join("daemon.pid");
 
     // Check for existing daemon
     if pid_path.exists() {

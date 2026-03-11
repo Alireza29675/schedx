@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$Repo = if ($env:SCHED_REPO) { $env:SCHED_REPO } else { "Alireza29675/schedx" }
-$InstallDir = if ($env:SCHED_INSTALL_DIR) {
-    $env:SCHED_INSTALL_DIR
+$Repo = if ($env:SCHEDX_REPO) { $env:SCHEDX_REPO } else { "Alireza29675/schedx" }
+$InstallDir = if ($env:SCHEDX_INSTALL_DIR) {
+    $env:SCHEDX_INSTALL_DIR
 } else {
     Join-Path $env:USERPROFILE "AppData\Local\Programs\schedx\bin"
 }
@@ -16,8 +16,8 @@ function Get-Target {
 }
 
 $Target = Get-Target
-$Version = if ($env:SCHED_VERSION) {
-    $env:SCHED_VERSION
+$Version = if ($env:SCHEDX_VERSION) {
+    $env:SCHEDX_VERSION
 } else {
     (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest").tag_name
 }

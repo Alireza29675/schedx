@@ -3,8 +3,8 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/Alireza29675/schedx/main/install.sh | sh
 set -eu
 
-REPO="${SCHED_REPO:-Alireza29675/schedx}"
-INSTALL_DIR="${SCHED_INSTALL_DIR:-$HOME/.local/bin}"
+REPO="${SCHEDX_REPO:-Alireza29675/schedx}"
+INSTALL_DIR="${SCHEDX_INSTALL_DIR:-$HOME/.local/bin}"
 
 # Detect architecture
 detect_target() {
@@ -56,8 +56,8 @@ main() {
     sha_tool=$(sha256_cmd)
 
     # Get latest release tag
-    if [ -n "${SCHED_VERSION:-}" ]; then
-        version="$SCHED_VERSION"
+    if [ -n "${SCHEDX_VERSION:-}" ]; then
+        version="$SCHEDX_VERSION"
     else
         version=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
             | grep '"tag_name"' | head -1 | cut -d'"' -f4)

@@ -19,7 +19,7 @@ const MAX_WEBHOOK_RESPONSE_LOG_BYTES: u64 = 256 * 1024;
 
 /// Execute a single job run.
 ///
-/// Returns `true` if the sched process itself should exit 0 (job failure is not sched failure).
+/// Returns `true` if the schedx process itself should exit 0 (job failure is not schedx failure).
 pub fn exec_job(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) -> Result<bool> {
     let job = state::load_job(job_id)?;
     let Some(job) = job else {

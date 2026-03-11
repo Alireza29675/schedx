@@ -86,11 +86,11 @@ fn compute_latest_due(
     }
 }
 
-/// Spawn `sched _exec <job-id> --scheduled-for <ts> --trigger <trigger>` as a background process.
+/// Spawn `schedx _exec <job-id> --scheduled-for <ts> --trigger <trigger>` as a background process.
 fn spawn_exec(job_id: &str, scheduled_for: DateTime<Utc>, trigger: &str) -> Result<()> {
-    let sched_bin = std::env::current_exe().context("could not determine sched binary path")?;
+    let schedx_bin = std::env::current_exe().context("could not determine schedx binary path")?;
 
-    std::process::Command::new(sched_bin)
+    std::process::Command::new(schedx_bin)
         .args([
             "_exec",
             job_id,
