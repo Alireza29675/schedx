@@ -877,7 +877,10 @@ Jobs:
 
 ### 15.2 Release (`.github/workflows/release.yml`)
 
-Trigger: git tag `v*`
+Trigger:
+
+- push to `main` when `Cargo.toml` version changed
+- git tag `v*`
 
 Build targets (v0.1):
 
@@ -886,13 +889,16 @@ Build targets (v0.1):
 
 Pipeline:
 
-1. build binaries (`cargo build --release --locked` or `cross` for aarch64)
-2. package tarballs:
+1. compute crate version from `Cargo.toml`
+2. on `main`, compare against the previous `main` commit version
+3. ensure tag `vMAJOR.MINOR.PATCH` exists for the release commit
+4. build binaries (`cargo build --release --locked` or `cross` for aarch64)
+5. package tarballs:
    - `schedx-x86_64-unknown-linux-gnu.tar.gz`
    - `schedx-aarch64-unknown-linux-gnu.tar.gz`
-3. generate `checksums.txt` (sha256)
-4. create GitHub release with assets + checksums
-5. publish crate to crates.io
+6. generate `checksums.txt` (sha256)
+7. create GitHub release with assets + checksums
+8. publish crate to crates.io
 
 ---
 

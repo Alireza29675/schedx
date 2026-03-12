@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -16,9 +18,14 @@ jobs:
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.plan.outputs.should_release }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      crate_version: ${{ steps.plan.outputs.crate_version }}
     steps:
-      - uses: actions/checkout@93cb6ef61257f1ba4f48db31f746e5ad0414c26e
+      - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Install toolchain
@@ -26,21 +33,62 @@ jobs:
           rustup toolchain install 1.85.0 --profile minimal
           rustup default 1.85.0
 
-      - name: Validate tag version
+      - name: Plan release
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           crate_version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "schedx") | .version')"
-          test "v${crate_version}" = "${GITHUB_REF_NAME}"
+          release_tag="v${crate_version}"
 
-      - name: Create draft release
+          echo "crate_version=${crate_version}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+
+          should_release=false
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            should_release=true
+          elif [[ "${REF}" == refs/tags/* ]]; then
+            test "${REF_NAME}" = "${release_tag}"
+            should_release=true
+          elif [ "${REF_NAME}" = "main" ]; then
+            previous_version=""
+            if [ -n "${BEFORE_SHA}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+              previous_version="$(git show "${BEFORE_SHA}:Cargo.toml" 2>/dev/null | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)"
+            fi
+
+            if [ -n "${previous_version}" ] && [ "${previous_version}" != "${crate_version}" ]; then
+              should_release=true
+            fi
+          fi
+
+          echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure release tag exists
+        if: steps.plan.outputs.should_release == 'true' && !startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.plan.outputs.release_tag }}
         run: |
-          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
-            gh release create "${GITHUB_REF_NAME}" --draft --title "${GITHUB_REF_NAME}" --generate-notes
+          gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1 || \
+            gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${RELEASE_TAG}" -f sha="${GITHUB_SHA}"
+
+      - name: Create draft release
+        if: steps.plan.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.plan.outputs.release_tag }}
+        run: |
+          gh release view "${RELEASE_TAG}" >/dev/null 2>&1 || \
+            gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --generate-notes
 
   build:
     name: Build ${{ matrix.target }}
     needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -67,7 +115,7 @@ jobs:
             bin: schedx.exe
             cross: false
     steps:
-      - uses: actions/checkout@93cb6ef61257f1ba4f48db31f746e5ad0414c26e
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -99,15 +147,17 @@ jobs:
       - name: Upload asset to draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         shell: bash
-        run: gh release upload "${GITHUB_REF_NAME}" "schedx-${{ matrix.target }}.tar.gz" --clobber
+        run: gh release upload "${RELEASE_TAG}" "schedx-${{ matrix.target }}.tar.gz" --clobber
 
   publish:
     name: Publish crates.io
-    needs: build
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6ef61257f1ba4f48db31f746e5ad0414c26e
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -134,43 +184,49 @@ jobs:
 
       - name: Skip duplicate publish
         if: steps.crates.outputs.already_published == 'true'
-        run: echo "schedx ${GITHUB_REF_NAME#v} is already published to crates.io; skipping cargo publish."
+        run: echo "schedx ${{ needs.prepare.outputs.crate_version }} is already published to crates.io; skipping cargo publish."
 
   finalize:
     name: Finalize Release
-    needs: [build, publish]
+    needs: [prepare, build, publish]
+    if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6ef61257f1ba4f48db31f746e5ad0414c26e
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Download release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: |
           mkdir -p artifacts
-          gh release download "${GITHUB_REF_NAME}" --dir artifacts --pattern 'schedx-*.tar.gz'
+          gh release download "${RELEASE_TAG}" --dir artifacts --pattern 'schedx-*.tar.gz'
 
       - name: Generate checksums
         run: |
           sha256sum artifacts/*.tar.gz > artifacts/checksums.txt
 
       - name: Generate Homebrew formula artifact
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.crate_version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          source_url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
-          curl -fsSL "$source_url" -o artifacts/schedx-source.tar.gz
+          source_url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${RELEASE_TAG}.tar.gz"
+          curl -fsSL "${source_url}" -o artifacts/schedx-source.tar.gz
           source_sha="$(sha256sum artifacts/schedx-source.tar.gz | awk '{print $1}')"
-          ./scripts/render-homebrew-formula.sh "$version" "$source_sha" > artifacts/schedx.rb
+          ./scripts/render-homebrew-formula.sh "${RELEASE_VERSION}" "${source_sha}" > artifacts/schedx.rb
 
       - name: Upload checksums and installers
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: |
-          gh release upload "${GITHUB_REF_NAME}" artifacts/checksums.txt artifacts/schedx.rb install.sh install.ps1 --clobber
+          gh release upload "${RELEASE_TAG}" artifacts/checksums.txt artifacts/schedx.rb install.sh install.ps1 --clobber
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit "${GITHUB_REF_NAME}" --draft=false
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+        run: gh release edit "${RELEASE_TAG}" --draft=false

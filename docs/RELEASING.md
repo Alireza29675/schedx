@@ -17,17 +17,24 @@ Before tagging:
 
 ## Release Pipeline
 
-Pushing a tag like `v0.1.0` triggers the release workflow.
+The release workflow runs in two cases:
+
+- a push to `main` where `Cargo.toml` changed to a new version
+- a direct push of a tag like `v0.1.0`
+
+On a version-bump push to `main`, GitHub Actions creates the matching `vMAJOR.MINOR.PATCH` tag for the pushed commit and continues the release pipeline using that tag name.
 
 The workflow:
 
-1. validates that the tag matches the crate version
-2. creates a draft GitHub Release
-3. builds release binaries for Linux, macOS, and Windows
-4. uploads tarballs and a combined `checksums.txt`
-5. attaches `install.sh` and `install.ps1`
-6. publishes the crate to crates.io unless that version already exists there
-7. publishes the GitHub Release after the crate publish step succeeds or is skipped
+1. computes the release version from `Cargo.toml`
+2. on `main`, checks whether the previous `main` commit had a different version
+3. ensures the matching git tag exists
+4. creates a draft GitHub Release
+5. builds release binaries for Linux, macOS, and Windows
+6. uploads tarballs and a combined `checksums.txt`
+7. attaches `install.sh` and `install.ps1`
+8. publishes the crate to crates.io unless that version already exists there
+9. publishes the GitHub Release after the crate publish step succeeds or is skipped
 
 ## Install and Update Policy
 
