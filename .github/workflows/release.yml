@@ -168,25 +168,28 @@ jobs:
           rustup toolchain install 1.85.0 --profile minimal
           rustup default 1.85.0
 
-      - name: Check crates.io
-        id: crates
-        run: |
-          crate_version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "schedx") | .version')"
-          if curl -fsSL "https://crates.io/api/v1/crates/schedx/${crate_version}" >/dev/null 2>&1; then
-            echo "already_published=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "already_published=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Publish
-        if: steps.crates.outputs.already_published != 'true'
-        run: cargo publish --locked
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.crate_version }}
+        run: |
+          set +e
+          publish_output="$(cargo publish --locked 2>&1)"
+          publish_status=$?
+          set -e
 
-      - name: Skip duplicate publish
-        if: steps.crates.outputs.already_published == 'true'
-        run: echo "schedx ${{ needs.prepare.outputs.crate_version }} is already published to crates.io; skipping cargo publish."
+          printf '%s\n' "${publish_output}"
+
+          if [ "${publish_status}" -eq 0 ]; then
+            exit 0
+          fi
+
+          if printf '%s\n' "${publish_output}" | grep -Fq "already exists on crates.io index"; then
+            echo "schedx ${RELEASE_VERSION} is already published to crates.io; skipping cargo publish."
+            exit 0
+          fi
+
+          exit "${publish_status}"
 
   finalize:
     name: Finalize Release

@@ -58,6 +58,13 @@ impl FileLock {
                         return Ok(None);
                     }
                 }
+                #[cfg(windows)]
+                {
+                    // ERROR_LOCK_VIOLATION
+                    if matches!(e.raw_os_error(), Some(33)) {
+                        return Ok(None);
+                    }
+                }
                 Err(e).with_context(|| format!("failed to acquire lock: {}", path.display()))
             }
         }

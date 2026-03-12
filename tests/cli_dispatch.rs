@@ -41,6 +41,10 @@ fn bin_path() -> std::path::PathBuf {
     assert_cmd::cargo::cargo_bin("schedx")
 }
 
+fn run_version_command() -> String {
+    format!("\"{}\" --version", bin_path().display())
+}
+
 fn history_json(env: &TestEnv, job: &str) -> Vec<Value> {
     let output = env
         .cmd()
@@ -78,7 +82,7 @@ where
 #[test]
 fn dispatch_runs_due_job_once_and_records_logs() {
     let env = TestEnv::new();
-    let bin_cmd = format!("{} --version", bin_path().display());
+    let bin_cmd = run_version_command();
 
     add_job_json(
         &env,
@@ -125,7 +129,7 @@ fn dispatch_runs_due_job_once_and_records_logs() {
 #[test]
 fn dispatch_records_overlap_once_per_missed_due_occurrence() {
     let env = TestEnv::new();
-    let bin_cmd = format!("{} --version", bin_path().display());
+    let bin_cmd = run_version_command();
     let add_json = add_job_json(
         &env,
         &[
@@ -176,7 +180,7 @@ fn dispatch_records_overlap_once_per_missed_due_occurrence() {
 #[test]
 fn repair_recovers_stale_claim_without_incrementing_run_count() {
     let env = TestEnv::new();
-    let bin_cmd = format!("{} --version", bin_path().display());
+    let bin_cmd = run_version_command();
     let add_json = add_job_json(
         &env,
         &[
@@ -223,7 +227,7 @@ fn repair_recovers_stale_claim_without_incrementing_run_count() {
 #[test]
 fn one_shot_stale_claim_retries_after_recovery() {
     let env = TestEnv::new();
-    let bin_cmd = format!("{} --version", bin_path().display());
+    let bin_cmd = run_version_command();
     let add_json = add_job_json(
         &env,
         &[
@@ -273,7 +277,7 @@ fn one_shot_stale_claim_retries_after_recovery() {
 #[test]
 fn list_and_get_json_reflect_skipped_due_runs() {
     let env = TestEnv::new();
-    let bin_cmd = format!("{} --version", bin_path().display());
+    let bin_cmd = run_version_command();
     let add_json = add_job_json(
         &env,
         &[
