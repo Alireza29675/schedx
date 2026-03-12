@@ -63,12 +63,19 @@ pub fn atomic_write_json<T: serde::Serialize>(target: &Path, value: &T) -> Resul
     atomic_write(target, &data)
 }
 
-/// fsync a directory to ensure rename durability.
+/// fsync a directory to ensure rename durability on platforms that support it.
+#[cfg(unix)]
 fn fsync_dir(dir: &Path) -> Result<()> {
     let d = fs::File::open(dir)
         .with_context(|| format!("failed to open dir for fsync: {}", dir.display()))?;
     d.sync_all()
         .with_context(|| format!("failed to fsync dir: {}", dir.display()))?;
+    Ok(())
+}
+
+/// Windows does not support opening directories with `std::fs::File` for fsync.
+#[cfg(windows)]
+fn fsync_dir(_dir: &Path) -> Result<()> {
     Ok(())
 }
 

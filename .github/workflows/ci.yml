@@ -23,7 +23,7 @@ jobs:
 
       - name: Install toolchain
         run: |
-          rustup toolchain install 1.85.0 --profile minimal --component rustfmt clippy
+          rustup toolchain install 1.85.0 --profile minimal --component rustfmt --component clippy
           rustup default 1.85.0
 
       - name: Format check
