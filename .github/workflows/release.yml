@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - Cargo.toml
     tags:
       - "v*"
   workflow_dispatch:
