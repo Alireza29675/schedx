@@ -46,6 +46,10 @@ schedx history
 schedx logs <job-id>
 ```
 
+## Examples
+
+See [docs/EXAMPLES.md](docs/EXAMPLES.md) for real-world recipes covering DevOps, webhooks, AI agent prompts, one-shot tasks, monitoring, and job lifecycle management.
+
 ## Security
 
 - local state is stored under `~/.schedx` or `SCHEDX_HOME`
