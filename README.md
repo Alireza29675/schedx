@@ -2,6 +2,8 @@
 
 `schedx` is a secure scheduler CLI for commands, prompts, and webhooks. It gives agents and humans a single, scriptable interface for recurring work, one-shot jobs, logs, history, and system scheduler integration.
 
+> **Supported platforms:** Linux and macOS only. Windows is not supported yet.
+
 ## Status
 
 The project is pre-1.0 and uses semantic versioning. Breaking changes can still happen in minor releases while the CLI and persistence model settle.
@@ -18,12 +20,6 @@ From GitHub Releases on macOS or Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Alireza29675/schedx/main/install.sh | sh
-```
-
-From GitHub Releases on Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/Alireza29675/schedx/main/install.ps1 | iex
 ```
 
 ## Update

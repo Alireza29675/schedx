@@ -112,10 +112,6 @@ jobs:
             target: aarch64-apple-darwin
             bin: schedx
             cross: false
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: schedx.exe
-            cross: false
     steps:
       - uses: actions/checkout@v6
         with:
@@ -228,7 +224,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: |
-          gh release upload "${RELEASE_TAG}" artifacts/checksums.txt artifacts/schedx.rb install.sh install.ps1 --clobber
+          gh release upload "${RELEASE_TAG}" artifacts/checksums.txt artifacts/schedx.rb install.sh --clobber
 
       - name: Publish GitHub Release
         env:
