@@ -1,8 +1,20 @@
 # schedx
 
+[![CI](https://github.com/Alireza29675/schedx/actions/workflows/ci.yml/badge.svg)](https://github.com/Alireza29675/schedx/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/schedx.svg)](https://crates.io/crates/schedx)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Scheduler CLI for recurring jobs, agent prompts, and webhooks.
 
 One tool to schedule everything -- cron jobs, one-shot tasks, webhook calls, and AI agent prompts. Local-first, file-based, and designed to be used by both humans and agents.
+
+## Why I Built This
+
+AI agents are great at doing things right now. But most real work happens over time -- a security audit that runs every night, a news digest compiled every morning, a deploy pipeline that checks back in 30 minutes. There was no clean way to give agents the time dimension. cron wasn't built for this. launchd wasn't built for this. So I built schedx.
+
+I've been using it daily for a few months now. My Claude Code agent schedules its own security reviews. It compiles a morning news briefing from diverse sources and emails me a fair summary. I have a job that wakes up both Codex and Claude Code to run a full network audit on my mini PC, then passes both reports to a judge agent that only pings me if something's actually wrong. It's like hiring a sysadmin who never sleeps.
+
+The idea is simple: if your agent can run a command, it can schedule one. And once scheduling is just another CLI call with JSON output, agents can build surprisingly sophisticated workflows across time -- without any glue code.
 
 ## Install
 
@@ -21,24 +33,24 @@ curl -fsSL https://raw.githubusercontent.com/Alireza29675/schedx/main/install.sh
 ## Quick Start
 
 ```bash
-# Schedule a recurring command
+# Run something every hour
 schedx add "every 1h" --run "echo hello"
 
-# Schedule a one-shot reminder
+# Remind me in 30 minutes
 schedx add "in 30m" --run "say 'break time'"
 
-# Fire a webhook on a cron schedule
+# Post to Slack every weekday morning
 schedx add "0 9 * * 1-5" \
   --webhook https://hooks.slack.com/services/T00/B00/xxx \
   --method POST \
   --header "Content-Type: application/json" \
   --body '{"text":"Good morning"}'
 
-# Ask an AI agent something every Friday
+# Ask an AI agent for a weekly PR summary
 schedx add "0 16 * * 5" \
   --prompt "Summarize this week's open pull requests"
 
-# Manage jobs
+# Manage your jobs
 schedx list
 schedx history
 schedx logs <job-id>
@@ -61,6 +73,29 @@ schedx rm <job-id>
 
 **System-native scheduling.** Integrates with systemd (Linux) and launchd (macOS) for the heartbeat tick. All scheduling decisions happen in schedx itself.
 
+## Real-World Agent Workflows
+
+```bash
+# Morning news briefing -- agent reads diverse sources, compiles a fair summary, emails you
+schedx add "0 7 * * 1-5" \
+  --prompt "Read top stories from Reuters, AP, Al Jazeera, and Ars Technica. Write a balanced 5-minute briefing and email it to me."
+
+# Nightly security review -- two agents audit, a third judges
+schedx add "0 2 * * *" \
+  --run "claude -p 'Run a full security scan of this machine: open ports, failed logins, unusual processes' > /tmp/audit-claude.md && \
+         codex -p 'Review network connections and firewall rules on this host' > /tmp/audit-codex.md && \
+         claude -p 'You are a security judge. Review these two audit reports and only alert me if something needs attention: $(cat /tmp/audit-claude.md /tmp/audit-codex.md)'"
+
+# Deploy canary check -- verify health 30 minutes after deploy
+schedx add "in 30m" \
+  --prompt "Check the /health endpoint and error rates for the last 30 minutes. Did the deploy go clean?"
+
+# Weekly dependency audit
+schedx add "0 10 * * 1" \
+  --run "cargo audit && npm audit" \
+  --name "dep-audit" --tag security
+```
+
 ## How It Compares
 
 | | cron | launchd | at | schedx |
@@ -77,7 +112,7 @@ schedx rm <job-id>
 | **Cross-platform** | Linux, macOS, BSDs | macOS only | Linux, macOS, BSDs | Linux, macOS |
 | **Config format** | Crontab lines | XML plists | Interactive or piped stdin | CLI flags, JSON state files |
 
-**A note on agents:** When an agent has to juggle crontab syntax, launchctl plists, and at queues just to schedule work, that's a lot of scattered context competing for the model's attention. I built schedx because I wanted one tool that brings the time dimension to the agent experience without the noise. It's a single CLI with JSON in and out, prompt scheduling as a first-class action, and queryable history. I've been using it daily for a few months now -- it's reliable and intuitive for agents out of the box.
+**A note on agents:** When an agent has to juggle crontab syntax, launchctl plists, and at queues just to schedule work, that's a lot of scattered context competing for the model's attention. I built schedx because I wanted one tool that brings the time dimension to the agent experience without the noise. It's a single CLI with JSON in and out, prompt scheduling as a first-class action, and queryable history. Reliable and intuitive for agents out of the box.
 
 ## More Examples
 
