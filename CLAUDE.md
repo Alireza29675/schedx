@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-schedx is a local-first scheduler CLI written in Rust that orchestrates commands, AI agent prompts, and webhooks. All state lives as plain files under `~/.schedx/` (or `SCHEDX_HOME`). The scheduler logic is backend-agnostic — systemd/launchd provide the heartbeat tick, but all scheduling decisions happen in Rust.
+schedx is a local-first scheduler CLI written in Rust for recurring jobs, AI agent prompts, and webhooks. All state lives as plain files under `~/.schedx/` (or `SCHEDX_HOME`). The scheduler logic is backend-agnostic — systemd/launchd provide the heartbeat tick, but all scheduling decisions happen in Rust.
 
 ## Build & Development Commands
 
