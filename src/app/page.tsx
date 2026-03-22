@@ -69,13 +69,13 @@ export default function Home() {
               Schedule any shell command on a cron expression or human interval.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "every 1h" \\\n  --run "cargo audit"`} />
+              <CopyButton text={`schedx add "0 2 * * *" \\\n  --run "./backup.sh"`} />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
-                <span className="hl-val">&quot;every 1h&quot;</span> \{"\n"}
+                <span className="hl-val">&quot;0 2 * * *&quot;</span> \{"\n"}
                 {"  "}
                 <span className="hl-flag">--run</span>{" "}
-                <span className="hl-val">&quot;cargo audit&quot;</span>
+                <span className="hl-val">&quot;./backup.sh&quot;</span>
               </pre>
             </div>
           </div>
@@ -96,15 +96,17 @@ export default function Home() {
               first-class.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "0 16 * * 5" \\\n  --prompt "Summarize this week's PRs"`} />
+              <CopyButton text={`schedx add "0 6 * * *" \\\n  --prompt "Summarize what I did yesterday and add it to my Notion" \\\n  --agent claude`} />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
-                <span className="hl-val">&quot;0 16 * * 5&quot;</span> \{"\n"}
+                <span className="hl-val">&quot;0 6 * * *&quot;</span> \{"\n"}
                 {"  "}
                 <span className="hl-flag">--prompt</span>{" "}
-                <span className="hl-val">
-                  &quot;Summarize this week&apos;s PRs&quot;
-                </span>
+                <span className="hl-val">&quot;Summarize yesterday,{"\n"}
+                {"  "}add to my Notion&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--agent</span>{" "}
+                <span className="hl-val">claude</span>
               </pre>
             </div>
           </div>

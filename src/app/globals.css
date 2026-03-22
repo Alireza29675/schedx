@@ -199,6 +199,8 @@ section::after {
   transition: background 0.3s ease;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .block:hover {
@@ -236,6 +238,25 @@ section::after {
   white-space: pre;
   font-size: 12px;
   line-height: 1.6;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.block pre::-webkit-scrollbar {
+  height: 4px;
+}
+
+.block pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.block pre::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 2px;
+}
+
+.block pre::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-muted);
 }
 
 .hl-cmd { color: var(--fg-main); font-weight: bold; }
@@ -338,6 +359,26 @@ section::after {
   height: 100%;
   color: var(--fg-code);
   line-height: 1.8;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+.workflow-code pre::-webkit-scrollbar {
+  height: 4px;
+}
+
+.workflow-code pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workflow-code pre::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 2px;
+}
+
+.workflow-code pre::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-muted);
 }
 
 .compare-table {
