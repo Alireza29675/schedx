@@ -223,6 +223,10 @@ section::after {
   margin-bottom: 0.5rem;
 }
 
+.block .copyable {
+  margin-top: auto;
+}
+
 .block pre {
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -232,12 +236,60 @@ section::after {
   white-space: pre;
   font-size: 12px;
   line-height: 1.6;
-  margin-top: auto;
 }
 
 .hl-cmd { color: var(--fg-main); font-weight: bold; }
 .hl-flag { color: var(--accent); }
 .hl-val { color: var(--fg-main); }
+
+/* Copy button */
+.copy-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.copy-btn:hover {
+  color: var(--fg-main);
+  border-color: var(--border-hover);
+}
+
+.copyable {
+  position: relative;
+}
+
+.copyable .copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.copyable:hover .copy-btn {
+  opacity: 1;
+}
+
+.hero-install .copy-btn {
+  position: static;
+  opacity: 1;
+}
+
+.install-box .copy-btn {
+  position: static;
+  opacity: 0;
+}
+
+.install-box:hover .copy-btn {
+  opacity: 1;
+}
 
 .workflow-list {
   display: flex;

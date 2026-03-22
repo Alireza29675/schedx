@@ -1,3 +1,5 @@
+import { CopyButton } from "./components/CopyButton";
+
 export default function Home() {
   return (
     <div className="container grid-frame">
@@ -14,7 +16,8 @@ export default function Home() {
             <span className="meta-label" style={{ margin: 0 }}>
               Install
             </span>
-            <code>cargo install schedx --locked</code>
+            <code>curl -sL schedx.run/get | bash</code>
+            <CopyButton text="curl -sL schedx.run/get | bash" />
           </div>
         </div>
         <p
@@ -65,13 +68,16 @@ export default function Home() {
             >
               Schedule any shell command on a cron expression or human interval.
             </p>
-            <pre>
-              <span className="hl-cmd">schedx</span> add{" "}
-              <span className="hl-val">&quot;every 1h&quot;</span> \{"\n"}
-              {"  "}
-              <span className="hl-flag">--run</span>{" "}
-              <span className="hl-val">&quot;cargo audit&quot;</span>
-            </pre>
+            <div className="copyable">
+              <CopyButton text={`schedx add "every 1h" \\\n  --run "cargo audit"`} />
+              <pre>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;every 1h&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--run</span>{" "}
+                <span className="hl-val">&quot;cargo audit&quot;</span>
+              </pre>
+            </div>
           </div>
           <div className="block">
             <div className="block-header">
@@ -89,15 +95,18 @@ export default function Home() {
               Ask an AI agent to do something on a schedule. Prompts are
               first-class.
             </p>
-            <pre>
-              <span className="hl-cmd">schedx</span> add{" "}
-              <span className="hl-val">&quot;0 16 * * 5&quot;</span> \{"\n"}
-              {"  "}
-              <span className="hl-flag">--prompt</span>{" "}
-              <span className="hl-val">
-                &quot;Summarize this week&apos;s PRs&quot;
-              </span>
-            </pre>
+            <div className="copyable">
+              <CopyButton text={`schedx add "0 16 * * 5" \\\n  --prompt "Summarize this week's PRs"`} />
+              <pre>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;0 16 * * 5&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--prompt</span>{" "}
+                <span className="hl-val">
+                  &quot;Summarize this week&apos;s PRs&quot;
+                </span>
+              </pre>
+            </div>
           </div>
           <div className="block">
             <div className="block-header">
@@ -115,13 +124,16 @@ export default function Home() {
               Fire HTTP requests on a schedule. Built-in HTTPS, headers, and
               body.
             </p>
-            <pre>
-              <span className="hl-cmd">schedx</span> add{" "}
-              <span className="hl-val">&quot;0 9 * * 1-5&quot;</span> \{"\n"}
-              {"  "}
-              <span className="hl-flag">--webhook</span>{" "}
-              <span className="hl-val">https://hooks.slack.com/...</span>
-            </pre>
+            <div className="copyable">
+              <CopyButton text={`schedx add "0 9 * * 1-5" \\\n  --webhook https://hooks.slack.com/...`} />
+              <pre>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;0 9 * * 1-5&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--webhook</span>{" "}
+                <span className="hl-val">https://hooks.slack.com/...</span>
+              </pre>
+            </div>
           </div>
         </div>
       </section>
@@ -141,7 +153,8 @@ export default function Home() {
                 summary, and emails it to you before your day starts.
               </p>
             </div>
-            <div className="workflow-code">
+            <div className="workflow-code copyable">
+              <CopyButton text={`schedx add "0 7 * * 1-5" \\\n  --prompt "Read top stories from Reuters, AP, Al Jazeera, and Ars Technica. Write a balanced 5-minute briefing and email it to me."`} />
               <pre>{`schedx add "0 7 * * 1-5" \\
   --prompt "Read top stories from
   Reuters, AP, Al Jazeera, and
@@ -162,7 +175,8 @@ export default function Home() {
                 reports and only pings you if something needs attention.
               </p>
             </div>
-            <div className="workflow-code">
+            <div className="workflow-code copyable">
+              <CopyButton text={`schedx add "0 2 * * *" \\\n  --run "claude -p 'Full security scan: ports, logins, processes' > /tmp/a1.md && codex -p 'Review network and firewall' > /tmp/a2.md && claude -p 'Judge these reports. Alert only if needed.'"`} />
               <pre>{`schedx add "0 2 * * *" \\
   --run "claude -p 'Full security
   scan: ports, logins, processes'
@@ -185,7 +199,8 @@ export default function Home() {
                 health endpoints and error rates, then reports back.
               </p>
             </div>
-            <div className="workflow-code">
+            <div className="workflow-code copyable">
+              <CopyButton text={`schedx add "in 30m" \\\n  --prompt "Check the /health endpoint and error rates for the last 30 minutes. Did the deploy go clean?"`} />
               <pre>{`schedx add "in 30m" \\
   --prompt "Check the /health
   endpoint and error rates for
@@ -253,12 +268,14 @@ export default function Home() {
       <section className="footer-section">
         <div className="cta-group">
           <div className="install-box">
-            <code>cargo install schedx --locked</code>
-            <span>[Rust]</span>
+            <code>curl -sL schedx.run/get | bash</code>
+            <CopyButton text="curl -sL schedx.run/get | bash" />
+            <span>[Bin]</span>
           </div>
           <div className="install-box">
-            <code>curl -fsSL schedx.run/install.sh | sh</code>
-            <span>[Bin]</span>
+            <code>cargo install schedx --locked</code>
+            <CopyButton text="cargo install schedx --locked" />
+            <span>[Rust]</span>
           </div>
         </div>
         <div className="links">
