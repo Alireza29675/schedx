@@ -8,7 +8,7 @@
   --fg-code: #888888;
   --accent: #b8e0ff;
   --accent-glow: rgba(184, 224, 255, 0.15);
-  --border: #1a1a1a;
+  --border: #2a2a2a;
   --border-hover: #333333;
   --rhythm: 24px;
 }
@@ -31,8 +31,8 @@ body {
     to right,
     transparent,
     transparent 7px,
-    rgba(255, 255, 255, 0.015) 7px,
-    rgba(255, 255, 255, 0.015) 8px
+    rgba(255, 255, 255, 0.02) 7px,
+    rgba(255, 255, 255, 0.02) 8px
   );
 }
 
@@ -262,6 +262,10 @@ section::after {
 .hl-cmd { color: var(--fg-main); font-weight: bold; }
 .hl-flag { color: var(--accent); }
 .hl-val { color: var(--fg-main); }
+.hl-str { color: #a8d8a8; }
+.hl-comment { color: #555555; font-style: italic; }
+.hl-op { color: var(--fg-muted); }
+.hl-redirect { color: #d4a8d4; }
 
 /* Copy button */
 .copy-btn {
@@ -329,12 +333,13 @@ section::after {
 .workflow-item::before {
   content: "";
   position: absolute;
-  left: -4px;
+  left: calc(-1 * var(--rhythm) - 4px);
   top: 4.5rem;
   width: 8px;
   height: 8px;
   background: var(--bg);
   border: 1px solid var(--border);
+  z-index: 2;
 }
 
 .workflow-item:hover::before {

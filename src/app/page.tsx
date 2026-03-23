@@ -69,10 +69,10 @@ export default function Home() {
               Schedule any shell command on a cron expression or human interval.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "0 2 * * *" \\\n  --run "./backup.sh"`} />
+              <CopyButton text={`schedx add "every 6h" \\\n  --run "./backup.sh"`} />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
-                <span className="hl-val">&quot;0 2 * * *&quot;</span> \{"\n"}
+                <span className="hl-val">&quot;every 6h&quot;</span> \{"\n"}
                 {"  "}
                 <span className="hl-flag">--run</span>{" "}
                 <span className="hl-val">&quot;./backup.sh&quot;</span>
@@ -127,13 +127,13 @@ export default function Home() {
               body.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "0 9 * * 1-5" \\\n  --webhook https://hooks.slack.com/...`} />
+              <CopyButton text={`schedx add "in 2h" \\\n  --webhook https://hooks.slack.com/T00`} />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
-                <span className="hl-val">&quot;0 9 * * 1-5&quot;</span> \{"\n"}
+                <span className="hl-val">&quot;in 2h&quot;</span> \{"\n"}
                 {"  "}
                 <span className="hl-flag">--webhook</span>{" "}
-                <span className="hl-val">https://hooks.slack.com/...</span>
+                <span className="hl-val">https://hooks.slack.com/T00</span>
               </pre>
             </div>
           </div>
@@ -157,12 +157,9 @@ export default function Home() {
             </div>
             <div className="workflow-code copyable">
               <CopyButton text={`schedx add "0 7 * * 1-5" \\\n  --prompt "Read top stories from Reuters, AP, Al Jazeera, and Ars Technica. Write a balanced 5-minute briefing and email it to me."`} />
-              <pre>{`schedx add "0 7 * * 1-5" \\
-  --prompt "Read top stories from
-  Reuters, AP, Al Jazeera, and
-  Ars Technica. Write a balanced
-  5-minute briefing and email it
-  to me."`}</pre>
+              <pre>
+<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;0 7 * * 1-5&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--prompt</span> <span className="hl-str">&quot;Read top stories from{"\n"}{"  "}Reuters, AP, Al Jazeera, and{"\n"}{"  "}Ars Technica. Write a balanced{"\n"}{"  "}5-minute briefing and email it{"\n"}{"  "}to me.&quot;</span>
+              </pre>
             </div>
           </div>
 
@@ -179,14 +176,9 @@ export default function Home() {
             </div>
             <div className="workflow-code copyable">
               <CopyButton text={`schedx add "0 2 * * *" \\\n  --run "claude -p 'Full security scan: ports, logins, processes' > /tmp/a1.md && codex -p 'Review network and firewall' > /tmp/a2.md && claude -p 'Judge these reports. Alert only if needed.'"`} />
-              <pre>{`schedx add "0 2 * * *" \\
-  --run "claude -p 'Full security
-  scan: ports, logins, processes'
-  > /tmp/a1.md &&
-  codex -p 'Review network and
-  firewall' > /tmp/a2.md &&
-  claude -p 'Judge these reports.
-  Alert only if needed.'"`}</pre>
+              <pre>
+<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;0 2 * * *&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--run</span> <span className="hl-str">&quot;claude -p &apos;Full security{"\n"}{"  "}scan: ports, logins, processes&apos;{"\n"}{"  "}&gt; /tmp/a1.md</span> <span className="hl-op">&amp;&amp;</span>{"\n"}{"  "}<span className="hl-str">codex -p &apos;Review network and{"\n"}{"  "}firewall&apos; &gt; /tmp/a2.md</span> <span className="hl-op">&amp;&amp;</span>{"\n"}{"  "}<span className="hl-str">claude -p &apos;Judge these reports.{"\n"}{"  "}Alert only if needed.&apos;&quot;</span>
+              </pre>
             </div>
           </div>
 
@@ -203,11 +195,9 @@ export default function Home() {
             </div>
             <div className="workflow-code copyable">
               <CopyButton text={`schedx add "in 30m" \\\n  --prompt "Check the /health endpoint and error rates for the last 30 minutes. Did the deploy go clean?"`} />
-              <pre>{`schedx add "in 30m" \\
-  --prompt "Check the /health
-  endpoint and error rates for
-  the last 30 minutes. Did the
-  deploy go clean?"`}</pre>
+              <pre>
+<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;in 30m&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--prompt</span> <span className="hl-str">&quot;Check the /health{"\n"}{"  "}endpoint and error rates for{"\n"}{"  "}the last 30 minutes. Did the{"\n"}{"  "}deploy go clean?&quot;</span>
+              </pre>
             </div>
           </div>
         </div>
