@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 
+use crate::model::action::Action;
 use crate::model::job::{Job, JobStatus};
 use crate::model::run_record::RunRecord;
 use crate::model::schedule::JobSchedule;
 use crate::output::format::{compute_next_run, compute_next_run_ignoring_status};
 use crate::output::time::{format_datetime, format_datetime_with_relative, format_duration_short};
+use crate::util::redact;
 
 /// Build the schedule description line for a job.
 fn format_schedule_line(job: &Job) -> String {
@@ -125,6 +127,7 @@ pub fn format_job_detail(job: &Job) -> String {
     lines.push(format!("Status: {}", job.status));
     lines.push(format!("Schedule: {}", format_schedule_line(job)));
     lines.push(format!("Type: {}", job.action.kind_str()));
+    format_action_detail(&job.action, &mut lines);
     lines.push(format!("Timeout: {}s", job.timeout_seconds));
 
     if !job.tags.is_empty() {
@@ -169,6 +172,68 @@ pub fn format_job_detail(job: &Job) -> String {
     }
 
     lines.join("\n")
+}
+
+/// Append action-specific detail lines for a job.
+fn format_action_detail(action: &Action, lines: &mut Vec<String>) {
+    match action {
+        Action::Run {
+            command,
+            shell,
+            workdir,
+        } => {
+            let redacted = redact_command(command);
+            lines.push(format!("Command: {redacted}"));
+            if *shell {
+                lines.push("Shell: yes".to_string());
+            }
+            if let Some(dir) = workdir {
+                lines.push(format!("Workdir: {dir}"));
+            }
+        }
+        Action::Prompt { text, agent } => {
+            if text.contains('\n') {
+                lines.push("Prompt:".to_string());
+                for line in text.lines() {
+                    lines.push(format!("  {line}"));
+                }
+            } else {
+                lines.push(format!("Prompt: {text}"));
+            }
+            if let Some(agent_name) = agent {
+                lines.push(format!("Agent: {agent_name}"));
+            }
+        }
+        Action::Webhook {
+            url,
+            method,
+            headers,
+            body,
+        } => {
+            lines.push(format!("URL: {}", redact::redact_url(url)));
+            lines.push(format!("Method: {method}"));
+            if !headers.is_empty() {
+                lines.push("Headers:".to_string());
+                for (k, v) in headers {
+                    lines.push(format!("  {k}: {}", redact::redact_header_value(k, v)));
+                }
+            }
+            if let Some(b) = body {
+                lines.push(format!("Body: {b}"));
+            }
+        }
+    }
+}
+
+/// Redact sensitive arguments in a command string.
+fn redact_command(command: &str) -> String {
+    match shell_words::split(command) {
+        Ok(args) => {
+            let redacted = redact::redact_cli_args(&args);
+            shell_words::join(&redacted)
+        }
+        Err(_) => command.to_string(),
+    }
 }
 
 /// Format history records as a human-readable table.

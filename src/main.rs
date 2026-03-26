@@ -57,6 +57,27 @@ fn main() -> ExitCode {
 
         Commands::Get { id } => commands::get::execute(id, cli.json),
 
+        Commands::Edit {
+            id,
+            name,
+            prompt,
+            prompt_stdin,
+            run,
+            agent,
+            timeout,
+            schedule,
+        } => commands::edit::execute(
+            id,
+            name.as_deref(),
+            prompt.as_deref(),
+            *prompt_stdin,
+            run.as_deref(),
+            agent.as_deref(),
+            *timeout,
+            schedule.as_deref(),
+            cli.json,
+        ),
+
         Commands::Run { id } => commands::run::execute(id),
 
         Commands::Rm { id, force } => commands::rm::execute(id, *force),

@@ -3,6 +3,7 @@ pub mod agent;
 pub mod config;
 pub mod daemon;
 pub mod dispatch;
+pub mod edit;
 pub mod exec;
 pub mod get;
 pub mod history;

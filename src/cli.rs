@@ -99,6 +99,40 @@ pub enum Commands {
         id: String,
     },
 
+    /// Edit an existing job's properties
+    Edit {
+        /// Job ID or name
+        id: String,
+
+        /// New name for the job
+        #[arg(long)]
+        name: Option<String>,
+
+        /// New prompt text (prompt jobs only)
+        #[arg(long)]
+        prompt: Option<String>,
+
+        /// Read new prompt from stdin (prompt jobs only)
+        #[arg(long)]
+        prompt_stdin: bool,
+
+        /// New command (run jobs only)
+        #[arg(long)]
+        run: Option<String>,
+
+        /// New agent name (prompt jobs only)
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// New timeout in seconds
+        #[arg(long)]
+        timeout: Option<u64>,
+
+        /// New schedule expression
+        #[arg(long)]
+        schedule: Option<String>,
+    },
+
     /// Remove a job
     Rm {
         /// Job ID or name
