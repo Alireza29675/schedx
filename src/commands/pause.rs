@@ -19,6 +19,13 @@ pub fn execute(id: &str) -> Result<()> {
             job.id
         );
     }
+    if job.status == JobStatus::Archived {
+        anyhow::bail!(
+            "Job {} ({}) is archived. Use `schedx unarchive` to restore it.",
+            job.display_name(),
+            job.id
+        );
+    }
 
     let _lock = FileLock::state()?;
     state::update_state(|s| {

@@ -9,11 +9,12 @@ use crate::model::run_record::Trigger;
 pub fn execute(id: &str) -> Result<()> {
     let job = find_job(id)?;
 
-    if job.status == JobStatus::Completed {
+    if job.status == JobStatus::Completed || job.status == JobStatus::Archived {
         anyhow::bail!(
-            "Error: Job '{}' ({}) is completed and cannot be run.",
+            "Error: Job '{}' ({}) is {} and cannot be run.",
             job.display_name(),
-            job.id
+            job.id,
+            job.status
         );
     }
 

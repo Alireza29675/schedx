@@ -32,6 +32,12 @@ impl FileLock {
         Self::acquire_non_blocking(&path)
     }
 
+    /// Acquire a non-blocking lock at an arbitrary path.
+    /// Returns `None` if already held.
+    pub fn acquire_non_blocking_path(path: &std::path::Path) -> Result<Option<Self>> {
+        Self::acquire_non_blocking(path)
+    }
+
     fn acquire_blocking(path: &std::path::Path) -> Result<Self> {
         ensure_lock_parent(path)?;
         let file = File::create(path)

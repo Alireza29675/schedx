@@ -12,6 +12,7 @@ pub enum JobStatus {
     Active,
     Paused,
     Completed,
+    Archived,
 }
 
 impl std::fmt::Display for JobStatus {
@@ -20,6 +21,7 @@ impl std::fmt::Display for JobStatus {
             Self::Active => write!(f, "active"),
             Self::Paused => write!(f, "paused"),
             Self::Completed => write!(f, "completed"),
+            Self::Archived => write!(f, "archived"),
         }
     }
 }
@@ -32,6 +34,7 @@ impl std::str::FromStr for JobStatus {
             "active" => Ok(Self::Active),
             "paused" => Ok(Self::Paused),
             "completed" => Ok(Self::Completed),
+            "archived" => Ok(Self::Archived),
             other => Err(format!("unknown status: {other}")),
         }
     }
@@ -70,6 +73,15 @@ pub struct Job {
     pub skip_remaining: u32,
     #[serde(default)]
     pub in_flight: Option<InFlightRun>,
+    /// Command to run when this job fails.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_failure: Option<String>,
+    /// Use shell execution for the failure command.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub on_failure_shell: bool,
+    /// When a one-shot job completed (used for archive countdown).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 impl Job {
