@@ -24,11 +24,12 @@ export default function Home() {
             <div className="hero-links">
               <a
                 href="https://github.com/Alireza29675/schedx"
-                className="hero-btn"
+                className="hero-btn hero-btn-star"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 Star on GitHub
+                <span className="star-tooltip">help it get seen :)</span>
               </a>
               <a
                 href="https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md"

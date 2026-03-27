@@ -220,6 +220,46 @@ section::after {
   color: var(--bg);
 }
 
+.hero-btn-star {
+  position: relative;
+}
+
+.star-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--fg-main);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  letter-spacing: 0;
+  text-transform: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+}
+
+.star-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--border);
+}
+
+.hero-btn-star:hover .star-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .hero-btn-secondary {
   border-color: var(--border);
   color: var(--fg-muted);
