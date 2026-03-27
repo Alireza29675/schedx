@@ -13,6 +13,10 @@ All notable changes to this project will be documented in this file.
 
 - *(ci)* Changelog workflow creates PR instead of pushing to main
 
+### Miscellaneous
+
+- Update changelog
+
 ## [0.2.0] - 2026-03-26
 
 ### Added
