@@ -12,6 +12,7 @@ use crate::model::job::{Job, JobStatus};
 use crate::model::run_record::{LastRun, RunRecord, RunStatus, Trigger};
 use crate::store::config::load_config;
 use crate::store::history;
+use crate::store::paths;
 use crate::store::state;
 use crate::util::id::new_run_id;
 
@@ -27,6 +28,7 @@ pub fn exec_job(job_id: &str, scheduled_for: DateTime<Utc>, trigger: Trigger) ->
 /// Execute a single job run.
 ///
 /// Returns `true` if the schedx process itself should exit 0 (job failure is not schedx failure).
+#[allow(clippy::too_many_lines)]
 pub fn exec_job_with_run_id(
     job_id: &str,
     scheduled_for: DateTime<Utc>,
@@ -68,6 +70,7 @@ pub fn exec_job_with_run_id(
                 status: RunStatus::SkippedOverlap,
                 exit_code: None,
                 log_path: String::new(),
+                failed_run_id: None,
             };
             history::append_record(&record)?;
         }
@@ -123,6 +126,7 @@ pub fn exec_job_with_run_id(
             // One-shot completion
             if j.is_one_shot() && !status.is_internal_error() {
                 j.status = JobStatus::Completed;
+                j.completed_at = Some(Utc::now());
             }
         }
         Ok(())
@@ -130,7 +134,7 @@ pub fn exec_job_with_run_id(
 
     // Append history record
     let record = RunRecord {
-        run_id,
+        run_id: run_id.clone(),
         job_id: job_id.to_string(),
         trigger,
         scheduled_for,
@@ -138,9 +142,15 @@ pub fn exec_job_with_run_id(
         finished_at,
         status,
         exit_code,
-        log_path,
+        log_path: log_path.clone(),
+        failed_run_id: None,
     };
     history::append_record(&record)?;
+
+    // Fire fallback if the job failed
+    if status.should_trigger_fallback() {
+        let _ = spawn_fallback(job_id, &run_id, status, exit_code, &log_path, scheduled_for);
+    }
 
     Ok(!status.is_internal_error())
 }
@@ -485,3 +495,273 @@ fn isolate_child_process(cmd: &mut Command) {
 
 #[cfg(not(unix))]
 fn isolate_child_process(_cmd: &mut Command) {}
+
+/// Append a structured failure line to `~/.schedx/failures.log`.
+fn append_failures_log(
+    job_id: &str,
+    job_name: &str,
+    run_id: &str,
+    status: RunStatus,
+    exit_code: Option<i32>,
+    log_path: &str,
+) {
+    let Ok(home) = paths::schedx_home() else {
+        return;
+    };
+    let path = home.join("failures.log");
+    let now = Utc::now().to_rfc3339();
+    let display_name = if job_name.is_empty() {
+        job_id
+    } else {
+        job_name
+    };
+    let exit_str = exit_code.map_or_else(String::new, |c| format!(" exit_code={c}"));
+    let line = format!(
+        "[{now}] FAILED job=\"{display_name}\" id={job_id} run={run_id} status={status}{exit_str} log={log_path}\n"
+    );
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .and_then(|mut f| {
+            use std::io::Write as _;
+            f.write_all(line.as_bytes())
+        });
+}
+
+/// Spawn `schedx _exec-fallback` as a detached subprocess after a failed run.
+fn spawn_fallback(
+    job_id: &str,
+    run_id: &str,
+    status: RunStatus,
+    exit_code: Option<i32>,
+    log_path: &str,
+    scheduled_for: DateTime<Utc>,
+) -> Result<()> {
+    // Always append to failures.log
+    let job_name = state::load_job(job_id)?
+        .and_then(|j| j.name.clone())
+        .unwrap_or_default();
+    append_failures_log(job_id, &job_name, run_id, status, exit_code, log_path);
+
+    // Resolve the absolute log path
+    let abs_log_path = paths::schedx_home().map_or_else(
+        |_| log_path.to_string(),
+        |h| h.join(log_path).to_string_lossy().to_string(),
+    );
+
+    // Spawn _exec-fallback as detached process
+    let schedx_bin = std::env::current_exe().context("could not determine schedx binary path")?;
+    let exit_code_str = exit_code.map_or_else(String::new, |c| c.to_string());
+    let mut cmd = Command::new(schedx_bin);
+    cmd.args([
+        "_exec-fallback",
+        job_id,
+        "--failed-run-id",
+        run_id,
+        "--failed-status",
+        status.as_str(),
+        "--failed-exit-code",
+        &exit_code_str,
+        "--failed-log-path",
+        &abs_log_path,
+        "--failed-scheduled-for",
+        &scheduled_for.to_rfc3339(),
+    ]);
+    cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::null());
+    cmd.stderr(std::process::Stdio::null());
+    detach_fallback_process(&mut cmd);
+    cmd.spawn()
+        .with_context(|| format!("failed to spawn _exec-fallback for job {job_id}"))?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn detach_fallback_process(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+
+    unsafe {
+        cmd.pre_exec(|| {
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+}
+
+#[cfg(not(unix))]
+fn detach_fallback_process(_cmd: &mut Command) {}
+
+/// Execute a fallback command for a failed job. Called from the `_exec-fallback` hidden command.
+pub fn exec_fallback(
+    job_id: &str,
+    failed_run_id: &str,
+    failed_status: &str,
+    failed_exit_code: &str,
+    failed_log_path: &str,
+    failed_scheduled_for: &str,
+) -> Result<bool> {
+    let config = load_config()?;
+
+    // Resolve fallback command: per-job > global config > None
+    let job = state::load_job(job_id)?;
+    let (fallback_cmd, fallback_shell) = if let Some(ref j) = job {
+        if j.on_failure.is_some() {
+            (j.on_failure.clone(), j.on_failure_shell)
+        } else {
+            (config.on_failure.clone(), config.on_failure_shell)
+        }
+    } else {
+        (config.on_failure.clone(), config.on_failure_shell)
+    };
+
+    let Some(command) = fallback_cmd else {
+        return Ok(true);
+    };
+
+    // Concurrency check: count active fallback lock files
+    let locks_dir = paths::locks_dir()?;
+    let active_fallbacks = std::fs::read_dir(&locks_dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter(|e| {
+                    e.file_name()
+                        .to_str()
+                        .is_some_and(|n| n.starts_with("fallback-"))
+                })
+                .count()
+        })
+        .unwrap_or(0);
+
+    if active_fallbacks >= usize::try_from(config.max_concurrent_fallbacks).unwrap_or(10) {
+        eprintln!(
+            "Fallback skipped for job {job_id}: max concurrent fallbacks ({}) reached.",
+            config.max_concurrent_fallbacks
+        );
+        return Ok(true);
+    }
+
+    // Acquire a fallback lock
+    let fallback_lock_path = locks_dir.join(format!("fallback-{failed_run_id}.lock"));
+    let _fallback_lock = FileLock::acquire_non_blocking_path(&fallback_lock_path)?;
+
+    let run_id = new_run_id();
+    let (log_file, log_rel_path) = logger::create_log_file(job_id, &run_id)?;
+    let started_at = Utc::now();
+
+    // Build stripped environment
+    let job_name = job
+        .as_ref()
+        .and_then(|j| j.name.clone())
+        .unwrap_or_default();
+
+    let env_vars = [
+        ("PATH", std::env::var("PATH").unwrap_or_default()),
+        ("HOME", std::env::var("HOME").unwrap_or_default()),
+        ("SHELL", std::env::var("SHELL").unwrap_or_default()),
+        ("TERM", std::env::var("TERM").unwrap_or_default()),
+        ("SCHEDX_FAILED_JOB_ID", job_id.to_string()),
+        ("SCHEDX_FAILED_JOB_NAME", job_name),
+        ("SCHEDX_FAILED_RUN_ID", failed_run_id.to_string()),
+        ("SCHEDX_FAILED_STATUS", failed_status.to_string()),
+        ("SCHEDX_FAILED_EXIT_CODE", failed_exit_code.to_string()),
+        ("SCHEDX_FAILED_LOG_PATH", failed_log_path.to_string()),
+        (
+            "SCHEDX_FAILED_SCHEDULED_FOR",
+            failed_scheduled_for.to_string(),
+        ),
+    ];
+
+    // Execute the fallback command
+    let result = execute_fallback_command(&command, fallback_shell, &env_vars, log_file);
+
+    let finished_at = Utc::now();
+    let (status, exit_code) = match &result {
+        Ok((code, timed_out)) => {
+            if *timed_out {
+                (RunStatus::Timeout, *code)
+            } else if code == &Some(0) {
+                (RunStatus::Success, *code)
+            } else {
+                (RunStatus::Failed, *code)
+            }
+        }
+        Err(_) => (RunStatus::InternalError, None),
+    };
+
+    // Parse the scheduled_for timestamp for the record
+    let scheduled_for_dt = chrono::DateTime::parse_from_rfc3339(failed_scheduled_for)
+        .map(|dt| dt.to_utc())
+        .unwrap_or(started_at);
+
+    // Record in history
+    let record = RunRecord {
+        run_id,
+        job_id: job_id.to_string(),
+        trigger: Trigger::Fallback,
+        scheduled_for: scheduled_for_dt,
+        started_at,
+        finished_at,
+        status,
+        exit_code,
+        log_path: log_rel_path,
+        failed_run_id: Some(failed_run_id.to_string()),
+    };
+    history::append_record(&record)?;
+
+    Ok(true)
+}
+
+const FALLBACK_TIMEOUT_SECONDS: u64 = 60;
+
+#[allow(clippy::needless_pass_by_value)]
+fn execute_fallback_command(
+    command: &str,
+    shell: bool,
+    env_vars: &[(&str, String)],
+    log_file: std::fs::File,
+) -> Result<(Option<i32>, bool)> {
+    let mut cmd = if shell {
+        let mut c = Command::new("/bin/sh");
+        c.args(["-lc", command]);
+        c
+    } else {
+        let argv = shell_words::split(command)
+            .with_context(|| format!("failed to parse fallback command: {command}"))?;
+        if argv.is_empty() {
+            anyhow::bail!("empty fallback command");
+        }
+        let mut c = Command::new(&argv[0]);
+        if argv.len() > 1 {
+            c.args(&argv[1..]);
+        }
+        c
+    };
+
+    // Stripped environment: clear all, then set only what we allow
+    cmd.env_clear();
+    for (key, value) in env_vars {
+        cmd.env(key, value);
+    }
+
+    let stdout_file = log_file.try_clone()?;
+    let stderr_file = log_file.try_clone()?;
+    cmd.stdout(Stdio::from(stdout_file));
+    cmd.stderr(Stdio::from(stderr_file));
+    isolate_child_process(&mut cmd);
+
+    let mut child = cmd.spawn().context("failed to spawn fallback command")?;
+
+    let timeout = Duration::from_secs(FALLBACK_TIMEOUT_SECONDS);
+    match wait_with_timeout(&mut child, timeout) {
+        Ok(status) => Ok((status.code(), false)),
+        Err(err) if is_timeout_error(&err) => {
+            kill_process(&mut child);
+            Ok((None, true))
+        }
+        Err(err) => Err(err),
+    }
+}

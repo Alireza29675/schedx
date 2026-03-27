@@ -72,6 +72,10 @@ pub struct JobDetail {
     pub last_run_status: Option<String>,
     pub last_run_at: Option<String>,
     pub last_run_at_readable: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub on_failure: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub on_failure_shell: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -181,6 +185,13 @@ impl JobDetail {
                 .last_run
                 .as_ref()
                 .map(|r| format_datetime_with_relative(r.finished_at, now)),
+            on_failure: job.on_failure.as_ref().map(|cmd| {
+                crate::util::redact::redact_cli_args(
+                    &shell_words::split(cmd).unwrap_or_else(|_| vec![cmd.clone()]),
+                )
+                .join(" ")
+            }),
+            on_failure_shell: job.on_failure_shell,
         }
     }
 }
@@ -199,6 +210,8 @@ pub struct HistoryEntry {
     pub finished_at_readable: String,
     pub status: String,
     pub exit_code: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed_run_id: Option<String>,
 }
 
 impl HistoryEntry {
@@ -216,6 +229,7 @@ impl HistoryEntry {
             finished_at_readable: format_datetime_with_relative(record.finished_at, now),
             status: record.status.to_string(),
             exit_code: record.exit_code,
+            failed_run_id: record.failed_run_id.clone(),
         }
     }
 }
@@ -392,6 +406,9 @@ mod tests {
             run_count: 0,
             skip_remaining,
             in_flight,
+            on_failure: None,
+            on_failure_shell: false,
+            completed_at: None,
         }
     }
 

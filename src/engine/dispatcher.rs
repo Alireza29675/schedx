@@ -38,7 +38,44 @@ pub fn dispatch(now: DateTime<Utc>) -> Result<()> {
         process_job(job_id, now)?;
     }
 
+    archive_completed_jobs(now, config.archive_after_hours)?;
     logger::cleanup_old_logs(config.log_retention_days)?;
+    Ok(())
+}
+
+/// Transition completed one-shot jobs to archived after the configured timeout.
+fn archive_completed_jobs(now: DateTime<Utc>, archive_after_hours: u64) -> Result<()> {
+    if archive_after_hours == 0 {
+        return Ok(());
+    }
+
+    let cutoff = now
+        - Duration::hours(
+            i64::try_from(archive_after_hours)
+                .unwrap_or(i64::MAX)
+                .min(8760),
+        );
+
+    let _state_lock = FileLock::state()?;
+    let mut job_state = load_state()?;
+    let mut changed = false;
+
+    for job in job_state.jobs.values_mut() {
+        if job.status != JobStatus::Completed {
+            continue;
+        }
+        let anchor = job.completed_at.unwrap_or(job.updated_at);
+        if anchor <= cutoff {
+            job.status = JobStatus::Archived;
+            job.updated_at = now;
+            changed = true;
+        }
+    }
+
+    if changed {
+        state::save_state(&job_state)?;
+    }
+
     Ok(())
 }
 
@@ -210,6 +247,7 @@ fn internal_error_record(
         status: RunStatus::InternalError,
         exit_code: None,
         log_path: String::new(),
+        failed_run_id: None,
     }
 }
 
@@ -228,6 +266,7 @@ fn skipped_overlap_record(
         status: RunStatus::SkippedOverlap,
         exit_code: None,
         log_path: String::new(),
+        failed_run_id: None,
     }
 }
 
@@ -373,6 +412,9 @@ mod tests {
             run_count: 0,
             skip_remaining: 0,
             in_flight,
+            on_failure: None,
+            on_failure_shell: false,
+            completed_at: None,
         }
     }
 

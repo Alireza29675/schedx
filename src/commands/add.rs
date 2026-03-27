@@ -19,7 +19,11 @@ const MAX_PROMPT_LEN: usize = 128 * 1024;
 const MAX_TAGS: usize = 20;
 const MAX_TAG_LEN: usize = 64;
 
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::fn_params_excessive_bools
+)]
 pub fn execute(
     schedule_input: &str,
     run_cmd: Option<&str>,
@@ -35,6 +39,8 @@ pub fn execute(
     method: Option<&str>,
     headers: &[String],
     body: Option<&str>,
+    on_failure: Option<&str>,
+    on_failure_shell: bool,
     json_output: bool,
 ) -> Result<()> {
     paths::ensure_dirs()?;
@@ -62,6 +68,14 @@ pub fn execute(
     }
     if workdir.is_some() && run_cmd.is_none() {
         bail!("Error: --workdir can only be used with --run.");
+    }
+    if on_failure_shell && on_failure.is_none() {
+        bail!("Error: --on-failure-shell can only be used with --on-failure.");
+    }
+    if let Some(cmd) = on_failure {
+        if cmd.len() > MAX_COMMAND_LEN {
+            bail!("Error: On-failure command exceeds maximum length of {MAX_COMMAND_LEN} bytes.");
+        }
     }
 
     // Validate tags
@@ -113,6 +127,9 @@ pub fn execute(
         run_count: 0,
         skip_remaining: 0,
         in_flight: None,
+        on_failure: on_failure.map(str::to_string),
+        on_failure_shell,
+        completed_at: None,
     };
 
     // Save under lock

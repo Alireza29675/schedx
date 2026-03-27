@@ -17,6 +17,10 @@ impl RunStatus {
         self == Self::InternalError
     }
 
+    pub fn should_trigger_fallback(self) -> bool {
+        matches!(self, Self::Failed | Self::Timeout | Self::InternalError)
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Success => "success",
@@ -46,6 +50,9 @@ pub struct RunRecord {
     pub status: RunStatus,
     pub exit_code: Option<i32>,
     pub log_path: String,
+    /// Set when `trigger == Fallback` — links back to the failed run that triggered this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failed_run_id: Option<String>,
 }
 
 /// What triggered a run.
@@ -54,6 +61,7 @@ pub struct RunRecord {
 pub enum Trigger {
     Scheduled,
     Manual,
+    Fallback,
 }
 
 impl std::str::FromStr for Trigger {
@@ -63,6 +71,7 @@ impl std::str::FromStr for Trigger {
         match s {
             "scheduled" => Ok(Self::Scheduled),
             "manual" => Ok(Self::Manual),
+            "fallback" => Ok(Self::Fallback),
             other => Err(format!("unknown trigger: {other}")),
         }
     }
@@ -73,6 +82,7 @@ impl std::fmt::Display for Trigger {
         match self {
             Self::Scheduled => write!(f, "scheduled"),
             Self::Manual => write!(f, "manual"),
+            Self::Fallback => write!(f, "fallback"),
         }
     }
 }
