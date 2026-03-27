@@ -78,6 +78,16 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1 || \
             gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${RELEASE_TAG}" -f sha="${GITHUB_SHA}"
 
+      - name: Generate release notes
+        if: steps.plan.outputs.should_release == 'true'
+        uses: orhun/git-cliff-action@v4
+        id: changelog
+        with:
+          config: cliff.toml
+          args: --verbose --latest --strip header
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
       - name: Create draft release
         if: steps.plan.outputs.should_release == 'true'
         env:
@@ -85,7 +95,7 @@ jobs:
           RELEASE_TAG: ${{ steps.plan.outputs.release_tag }}
         run: |
           gh release view "${RELEASE_TAG}" >/dev/null 2>&1 || \
-            gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --generate-notes
+            gh release create "${RELEASE_TAG}" --draft --title "${RELEASE_TAG}" --notes-file - <<< "${{ steps.changelog.outputs.content }}"
 
   build:
     name: Build ${{ matrix.target }}
