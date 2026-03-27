@@ -1,38 +1,49 @@
 import { CopyButton } from "./components/CopyButton";
+import { AgentChat } from "./components/AgentChat";
 
 export default function Home() {
   return (
     <div className="container grid-frame">
       {/* Hero */}
       <header className="hero">
-        <div className="meta-label" style={{ marginBottom: "1rem" }}>
-          Scheduler CLI
-        </div>
-        <div className="hero-header">
-          <div>
+        <div className="hero-content">
+          <div className="hero-left">
+            <div className="meta-label" style={{ marginBottom: "1rem" }}>
+              The scheduler for the autonomous age
+            </div>
             <h1 className="logo">schedx</h1>
+            <p className="hero-desc">
+              Schedule commands, agent prompts, and webhooks.
+              <br />
+              One CLI. Local-first. Built for humans and agents.
+            </p>
+            <div className="hero-install">
+              <code>curl -sL schedx.run/get | bash</code>
+              <CopyButton text="curl -sL schedx.run/get | bash" />
+            </div>
+            <div className="hero-links">
+              <a
+                href="https://github.com/Alireza29675/schedx"
+                className="hero-btn"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Star on GitHub
+              </a>
+              <a
+                href="https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md"
+                className="hero-btn hero-btn-secondary"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Examples
+              </a>
+            </div>
           </div>
-          <div className="hero-install">
-            <span className="meta-label" style={{ margin: 0 }}>
-              Install
-            </span>
-            <code>curl -sL schedx.run/get | bash</code>
-            <CopyButton text="curl -sL schedx.run/get | bash" />
+          <div className="hero-right">
+            <AgentChat />
           </div>
         </div>
-        <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            color: "var(--fg-muted)",
-            maxWidth: "460px",
-            fontSize: "13px",
-            lineHeight: 1.5,
-          }}
-        >
-          Recurring jobs, one-shot tasks, agent prompts, and webhooks.
-          <br />
-          One CLI. Local-first. Built for humans and agents.
-        </p>
       </header>
 
       {/* The Idea */}
@@ -66,10 +77,13 @@ export default function Home() {
                 fontSize: "14px",
               }}
             >
-              Schedule any shell command on a cron expression or human interval.
+              Schedule any shell command. Cron expressions or plain English
+              intervals.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "every 6h" \\\n  --run "./backup.sh"`} />
+              <CopyButton
+                text={`schedx add "every 6h" \\\n  --run "./backup.sh"`}
+              />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
                 <span className="hl-val">&quot;every 6h&quot;</span> \{"\n"}
@@ -92,18 +106,23 @@ export default function Home() {
                 fontSize: "14px",
               }}
             >
-              Ask an AI agent to do something on a schedule. Prompts are
-              first-class.
+              Tell an agent what to do and when. Prompts are first-class
+              citizens.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "0 6 * * *" \\\n  --prompt "Summarize what I did yesterday and add it to my Notion" \\\n  --agent claude`} />
+              <CopyButton
+                text={`schedx add "0 6 * * *" \\\n  --prompt "Summarize what I did yesterday and add it to my Notion" \\\n  --agent claude`}
+              />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
                 <span className="hl-val">&quot;0 6 * * *&quot;</span> \{"\n"}
                 {"  "}
                 <span className="hl-flag">--prompt</span>{" "}
-                <span className="hl-val">&quot;Summarize yesterday,{"\n"}
-                {"  "}add to my Notion&quot;</span> \{"\n"}
+                <span className="hl-val">
+                  &quot;Summarize yesterday,{"\n"}
+                  {"  "}add to my Notion&quot;
+                </span>{" "}
+                \{"\n"}
                 {"  "}
                 <span className="hl-flag">--agent</span>{" "}
                 <span className="hl-val">claude</span>
@@ -123,11 +142,12 @@ export default function Home() {
                 fontSize: "14px",
               }}
             >
-              Fire HTTP requests on a schedule. Built-in HTTPS, headers, and
-              body.
+              Fire webhooks on a schedule. Headers, body, and HTTPS built in.
             </p>
             <div className="copyable">
-              <CopyButton text={`schedx add "in 2h" \\\n  --webhook https://hooks.slack.com/T00`} />
+              <CopyButton
+                text={`schedx add "in 2h" \\\n  --webhook https://hooks.slack.com/T00`}
+              />
               <pre>
                 <span className="hl-cmd">schedx</span> add{" "}
                 <span className="hl-val">&quot;in 2h&quot;</span> \{"\n"}
@@ -156,9 +176,21 @@ export default function Home() {
               </p>
             </div>
             <div className="workflow-code copyable">
-              <CopyButton text={`schedx add "0 7 * * 1-5" \\\n  --prompt "Read top stories from Reuters, AP, Al Jazeera, and Ars Technica. Write a balanced 5-minute briefing and email it to me."`} />
+              <CopyButton
+                text={`schedx add "0 7 * * 1-5" \\\n  --prompt "Read top stories from Reuters, AP, Al Jazeera, and Ars Technica. Write a balanced 5-minute briefing and email it to me."`}
+              />
               <pre>
-<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;0 7 * * 1-5&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--prompt</span> <span className="hl-str">&quot;Read top stories from{"\n"}{"  "}Reuters, AP, Al Jazeera, and{"\n"}{"  "}Ars Technica. Write a balanced{"\n"}{"  "}5-minute briefing and email it{"\n"}{"  "}to me.&quot;</span>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;0 7 * * 1-5&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--prompt</span>{" "}
+                <span className="hl-str">
+                  &quot;Read top stories from{"\n"}
+                  {"  "}Reuters, AP, Al Jazeera, and{"\n"}
+                  {"  "}Ars Technica. Write a balanced{"\n"}
+                  {"  "}5-minute briefing and email it{"\n"}
+                  {"  "}to me.&quot;
+                </span>
               </pre>
             </div>
           </div>
@@ -168,16 +200,40 @@ export default function Home() {
               <span className="meta-label" style={{ marginBottom: "1rem" }}>
                 Nightly at 2am
               </span>
-              <h3>Multi-Agent Security Audit</h3>
+              <h3>Nightly Multi-Agent Security Sweep</h3>
               <p>
                 Two agents run independent security scans. A third judges both
                 reports and only pings you if something needs attention.
               </p>
             </div>
             <div className="workflow-code copyable">
-              <CopyButton text={`schedx add "0 2 * * *" \\\n  --run "claude -p 'Full security scan: ports, logins, processes' > /tmp/a1.md && codex -p 'Review network and firewall' > /tmp/a2.md && claude -p 'Judge these reports. Alert only if needed.'"`} />
+              <CopyButton
+                text={`schedx add "0 2 * * *" \\\n  --run "claude -p 'Full security scan: ports, logins, processes' > /tmp/a1.md && codex -p 'Review network and firewall' > /tmp/a2.md && claude -p 'Judge these reports. Alert only if needed.'"`}
+              />
               <pre>
-<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;0 2 * * *&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--run</span> <span className="hl-str">&quot;claude -p &apos;Full security{"\n"}{"  "}scan: ports, logins, processes&apos;{"\n"}{"  "}&gt; /tmp/a1.md</span> <span className="hl-op">&amp;&amp;</span>{"\n"}{"  "}<span className="hl-str">codex -p &apos;Review network and{"\n"}{"  "}firewall&apos; &gt; /tmp/a2.md</span> <span className="hl-op">&amp;&amp;</span>{"\n"}{"  "}<span className="hl-str">claude -p &apos;Judge these reports.{"\n"}{"  "}Alert only if needed.&apos;&quot;</span>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;0 2 * * *&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--run</span>{" "}
+                <span className="hl-str">
+                  &quot;claude -p &apos;Full security{"\n"}
+                  {"  "}scan: ports, logins, processes&apos;{"\n"}
+                  {"  "}&gt; /tmp/a1.md
+                </span>{" "}
+                <span className="hl-op">&amp;&amp;</span>
+                {"\n"}
+                {"  "}
+                <span className="hl-str">
+                  codex -p &apos;Review network and{"\n"}
+                  {"  "}firewall&apos; &gt; /tmp/a2.md
+                </span>{" "}
+                <span className="hl-op">&amp;&amp;</span>
+                {"\n"}
+                {"  "}
+                <span className="hl-str">
+                  claude -p &apos;Judge these reports.{"\n"}
+                  {"  "}Alert only if needed.&apos;&quot;
+                </span>
               </pre>
             </div>
           </div>
@@ -194,11 +250,31 @@ export default function Home() {
               </p>
             </div>
             <div className="workflow-code copyable">
-              <CopyButton text={`schedx add "in 30m" \\\n  --prompt "Check the /health endpoint and error rates for the last 30 minutes. Did the deploy go clean?"`} />
+              <CopyButton
+                text={`schedx add "in 30m" \\\n  --prompt "Check the /health endpoint and error rates for the last 30 minutes. Did the deploy go clean?"`}
+              />
               <pre>
-<span className="hl-cmd">schedx</span> add <span className="hl-val">&quot;in 30m&quot;</span> \{"\n"}{"  "}<span className="hl-flag">--prompt</span> <span className="hl-str">&quot;Check the /health{"\n"}{"  "}endpoint and error rates for{"\n"}{"  "}the last 30 minutes. Did the{"\n"}{"  "}deploy go clean?&quot;</span>
+                <span className="hl-cmd">schedx</span> add{" "}
+                <span className="hl-val">&quot;in 30m&quot;</span> \{"\n"}
+                {"  "}
+                <span className="hl-flag">--prompt</span>{" "}
+                <span className="hl-str">
+                  &quot;Check the /health{"\n"}
+                  {"  "}endpoint and error rates for{"\n"}
+                  {"  "}the last 30 minutes. Did the{"\n"}
+                  {"  "}deploy go clean?&quot;
+                </span>
               </pre>
             </div>
+          </div>
+        </div>
+
+        {/* Mid-page CTA */}
+        <div className="mid-cta">
+          <div className="install-box">
+            <code>curl -sL schedx.run/get | bash</code>
+            <CopyButton text="curl -sL schedx.run/get | bash" />
+            <span>[Bin]</span>
           </div>
         </div>
       </section>
@@ -269,11 +345,31 @@ export default function Home() {
             <CopyButton text="cargo install schedx --locked" />
             <span>[Rust]</span>
           </div>
+          <div className="footer-meta">
+            MIT Licensed. Written in Rust. File-based. Zero dependencies.
+          </div>
         </div>
         <div className="links">
-          <a href="https://github.com/Alireza29675/schedx">GitHub</a>
-          <a href="https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md">
+          <a
+            href="https://github.com/Alireza29675/schedx"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          <a
+            href="https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Examples
+          </a>
+          <a
+            href="https://alireza.cc"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            alireza.cc
           </a>
         </div>
       </section>

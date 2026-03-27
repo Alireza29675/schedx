@@ -11,6 +11,7 @@
   --border: #2a2a2a;
   --border-hover: #333333;
   --rhythm: 24px;
+  --green: #a8d8a8;
 }
 
 * {
@@ -122,22 +123,44 @@ section::after {
   display: block;
 }
 
+/* ============================================
+   HERO
+   ============================================ */
+
 .hero {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding-bottom: 10vh;
+  padding-bottom: 8vh;
   border-bottom: 1px solid var(--border);
   position: relative;
   z-index: 1;
 }
 
-.hero-header {
+.hero > .meta-label {
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: end;
+}
+
+.hero-left {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hero-right {
+  display: flex;
   align-items: flex-end;
-  margin-bottom: 2rem;
+  justify-content: flex-end;
 }
 
 .logo {
@@ -146,6 +169,16 @@ section::after {
   letter-spacing: -0.05em;
   font-weight: 700;
   line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+.hero-desc {
+  font-family: var(--font-mono);
+  color: var(--fg-muted);
+  max-width: 460px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 2rem;
 }
 
 .hero-install {
@@ -156,15 +189,190 @@ section::after {
   align-items: center;
   gap: 1rem;
   backdrop-filter: blur(4px);
+  width: fit-content;
+  margin-bottom: 1.5rem;
 }
 
 .hero-install code {
   color: var(--fg-main);
 }
 
+.hero-links {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.hero-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  transition: background 0.2s, color 0.2s;
+}
+
+.hero-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.hero-btn-secondary {
+  border-color: var(--border);
+  color: var(--fg-muted);
+}
+
+.hero-btn-secondary:hover {
+  border-color: var(--fg-muted);
+  background: transparent;
+  color: var(--fg-main);
+}
+
+/* ============================================
+   AGENT CHAT ANIMATION
+   ============================================ */
+
+.agent-chat {
+  width: 440px;
+  height: 260px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.agent-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.agent-chat-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.agent-chat-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-hover);
+}
+
+.agent-chat-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+}
+
+.agent-chat-body {
+  padding: 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.chat-line {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  transition: opacity 0.5s ease;
+}
+
+.chat-fade {
+  opacity: 0;
+}
+
+.chat-user {
+  color: var(--fg-main);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-prompt {
+  color: var(--accent);
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.chat-agent {
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+/* Tool use block (bash) */
+.chat-tool-wrap {
+  margin: 0.25rem 0;
+  transition: opacity 0.5s ease;
+}
+
+.chat-tool-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  margin-bottom: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.chat-tool-label svg {
+  opacity: 0.6;
+}
+
+.chat-tool-code {
+  color: var(--green);
+  padding: 0.5rem 0.75rem;
+  background: rgba(168, 216, 168, 0.04);
+  border-left: 2px solid rgba(168, 216, 168, 0.15);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.chat-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 13px;
+  background: var(--accent);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ============================================
+   IDEA
+   ============================================ */
+
 .idea {
   text-align: center;
-  padding: 12rem 0;
+  padding: 10rem 0;
 }
 
 .idea p {
@@ -175,6 +383,10 @@ section::after {
   max-width: 24ch;
   margin: 0 auto;
   color: var(--fg-main);
+  background: var(--bg);
+  padding: 1rem 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .idea-meta {
@@ -183,6 +395,10 @@ section::after {
   justify-content: center;
   gap: 2rem;
 }
+
+/* ============================================
+   BLOCKS GRID
+   ============================================ */
 
 .blocks-grid {
   display: grid;
@@ -242,32 +458,24 @@ section::after {
   scrollbar-color: var(--border-hover) transparent;
 }
 
-.block pre::-webkit-scrollbar {
-  height: 4px;
-}
+.block pre::-webkit-scrollbar { height: 4px; }
+.block pre::-webkit-scrollbar-track { background: transparent; }
+.block pre::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+.block pre::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
 
-.block pre::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.block pre::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 2px;
-}
-
-.block pre::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-muted);
-}
-
+/* Syntax highlighting */
 .hl-cmd { color: var(--fg-main); font-weight: bold; }
 .hl-flag { color: var(--accent); }
 .hl-val { color: var(--fg-main); }
-.hl-str { color: #a8d8a8; }
+.hl-str { color: var(--green); }
 .hl-comment { color: #555555; font-style: italic; }
 .hl-op { color: var(--fg-muted); }
 .hl-redirect { color: #d4a8d4; }
 
-/* Copy button */
+/* ============================================
+   COPY BUTTON
+   ============================================ */
+
 .copy-btn {
   background: none;
   border: 1px solid transparent;
@@ -315,6 +523,10 @@ section::after {
 .install-box:hover .copy-btn {
   opacity: 1;
 }
+
+/* ============================================
+   WORKFLOWS
+   ============================================ */
 
 .workflow-list {
   display: flex;
@@ -369,22 +581,23 @@ section::after {
   scrollbar-color: var(--border-hover) transparent;
 }
 
-.workflow-code pre::-webkit-scrollbar {
-  height: 4px;
+.workflow-code pre::-webkit-scrollbar { height: 4px; }
+.workflow-code pre::-webkit-scrollbar-track { background: transparent; }
+.workflow-code pre::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 2px; }
+.workflow-code pre::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+/* ============================================
+   MID-PAGE CTA
+   ============================================ */
+
+.mid-cta {
+  margin-top: 4rem;
+  max-width: 480px;
 }
 
-.workflow-code pre::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.workflow-code pre::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 2px;
-}
-
-.workflow-code pre::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-muted);
-}
+/* ============================================
+   COMPARISON TABLE
+   ============================================ */
 
 .compare-table {
   width: 100%;
@@ -414,6 +627,10 @@ section::after {
 .row-highlight {
   color: var(--accent);
 }
+
+/* ============================================
+   FOOTER
+   ============================================ */
 
 .footer-section {
   padding: 8rem 0;
@@ -460,6 +677,14 @@ section::after {
   margin-left: 1rem;
 }
 
+.footer-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
 .links {
   display: flex;
   gap: 2rem;
@@ -483,10 +708,17 @@ section::after {
 .links a::after { content: "]"; color: var(--fg-muted); }
 .links a:hover { color: var(--accent); }
 
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
 @media (max-width: 768px) {
   .grid-frame { border: none; }
   .grid-frame::before { display: none; }
-  .hero-header { flex-direction: column; align-items: flex-start; gap: 2rem; }
+  .hero { min-height: auto; padding-top: 4rem; padding-bottom: 4rem; }
+  .hero-content { grid-template-columns: 1fr; }
+  .hero-right { justify-content: flex-start; }
+  .agent-chat { width: 100%; height: 240px; }
   .logo { font-size: 3rem; }
   .blocks-grid { grid-template-columns: 1fr; }
   .workflow-item { grid-template-columns: 1fr; gap: 2rem; }
@@ -496,4 +728,13 @@ section::after {
   section { padding: 4rem 0; }
   .idea { padding: 6rem 0; }
   .idea p { font-size: 1.8rem; }
+  .hero-links { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .hero-install { width: 100%; }
+  .hero-install code { font-size: 11px; }
+  .agent-chat { height: 220px; }
+  .chat-cmd { font-size: 11px; }
+  .hero-btn { font-size: 11px; padding: 0.5rem 1rem; }
 }
