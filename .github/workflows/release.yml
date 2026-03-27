@@ -242,3 +242,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
         run: gh release edit "${RELEASE_TAG}" --draft=false
+
