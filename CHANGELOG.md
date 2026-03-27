@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- *(ci)* Add git-cliff changelog and update release notes
+- Add error fallback system and auto-archive for completed one-shot jobs
+
+### Fixed
+
+- *(ci)* Changelog workflow creates PR instead of pushing to main
+
+## [0.2.0] - 2026-03-26
+
+### Added
+
 - Add edit command and full action details in get output
 
 ### Fixed
