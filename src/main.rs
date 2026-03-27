@@ -6,6 +6,7 @@ mod model;
 mod output;
 mod schedule;
 mod store;
+mod upgrade;
 mod util;
 
 use std::process::ExitCode;
@@ -111,6 +112,8 @@ fn main() -> ExitCode {
 
         Commands::Daemon { interval } => commands::daemon::execute(*interval),
 
+        Commands::Upgrade { force } => commands::upgrade::execute(*force, cli.json),
+
         Commands::Dispatch => commands::dispatch::execute(),
 
         Commands::Exec {
@@ -146,6 +149,20 @@ fn main() -> ExitCode {
             }
         }
     };
+
+    // Post-command update hint (skip for internal commands, upgrade, and --json mode)
+    let is_internal = matches!(
+        cli.command,
+        Commands::Dispatch
+            | Commands::Exec { .. }
+            | Commands::ExecFallback { .. }
+            | Commands::Upgrade { .. }
+    );
+    if !is_internal {
+        if let Some(hint) = upgrade::check::maybe_hint(cli.json) {
+            eprintln!("{hint}");
+        }
+    }
 
     match result {
         Ok(()) => ExitCode::SUCCESS,

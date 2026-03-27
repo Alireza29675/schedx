@@ -52,6 +52,10 @@ pub fn job_lock_path(job_id: &str) -> Result<PathBuf> {
     Ok(locks_dir()?.join(format!("job-{job_id}.lock")))
 }
 
+pub fn update_check_file() -> Result<PathBuf> {
+    Ok(schedx_home()?.join("update-check.json"))
+}
+
 /// Ensure the full directory hierarchy exists with secure permissions.
 pub fn ensure_dirs() -> Result<()> {
     let home = schedx_home()?;
