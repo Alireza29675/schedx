@@ -222,6 +222,13 @@ pub enum Commands {
         value: Option<String>,
     },
 
+    /// Upgrade schedx to the latest version
+    Upgrade {
+        /// Force upgrade even if already on latest version
+        #[arg(long)]
+        force: bool,
+    },
+
     /// Repair backend and state
     Repair,
 
