@@ -112,11 +112,12 @@ fn validate_inputs(
     agent: Option<&str>,
     schedule: Option<&str>,
 ) -> Result<ValidatedEdits> {
-    if job.status == JobStatus::Completed {
+    if job.status == JobStatus::Completed || job.status == JobStatus::Archived {
         bail!(
-            "Error: Job {} ({}) is completed and cannot be edited.",
+            "Error: Job {} ({}) is {} and cannot be edited.",
             job.display_name(),
-            job.id
+            job.id,
+            job.status
         );
     }
 

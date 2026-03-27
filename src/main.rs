@@ -14,6 +14,7 @@ use clap::Parser;
 
 use cli::{Cli, Commands};
 
+#[allow(clippy::too_many_lines)]
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
@@ -33,6 +34,8 @@ fn main() -> ExitCode {
             method,
             header,
             body,
+            on_failure,
+            on_failure_shell,
         } => commands::add::execute(
             schedule,
             run.as_deref(),
@@ -48,11 +51,13 @@ fn main() -> ExitCode {
             method.as_deref(),
             header,
             body.as_deref(),
+            on_failure.as_deref(),
+            *on_failure_shell,
             cli.json,
         ),
 
-        Commands::List { status, tag } => {
-            commands::list::execute(status.as_deref(), tag.as_deref(), cli.json)
+        Commands::List { status, tag, all } => {
+            commands::list::execute(status.as_deref(), tag.as_deref(), *all, cli.json)
         }
 
         Commands::Get { id } => commands::get::execute(id, cli.json),
@@ -86,6 +91,8 @@ fn main() -> ExitCode {
 
         Commands::Resume { id } => commands::resume::execute(id),
 
+        Commands::Unarchive { id } => commands::unarchive::execute(id),
+
         Commands::Skip { id, times } => commands::skip::execute(id, *times, cli.json),
 
         Commands::Logs { id, run, lines } => commands::logs::execute(id, run.as_deref(), *lines),
@@ -116,6 +123,28 @@ fn main() -> ExitCode {
             Ok(false) => return ExitCode::from(1),
             Err(e) => Err(e),
         },
+
+        Commands::ExecFallback {
+            job_id,
+            failed_run_id,
+            failed_status,
+            failed_exit_code,
+            failed_log_path,
+            failed_scheduled_for,
+        } => {
+            let _ = crate::store::paths::ensure_dirs();
+            match crate::engine::executor::exec_fallback(
+                job_id,
+                failed_run_id,
+                failed_status,
+                failed_exit_code,
+                failed_log_path,
+                failed_scheduled_for,
+            ) {
+                Ok(_) => return ExitCode::SUCCESS,
+                Err(e) => Err(e),
+            }
+        }
     };
 
     match result {

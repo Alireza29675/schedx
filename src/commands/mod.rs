@@ -15,3 +15,4 @@ pub mod resume;
 pub mod rm;
 pub mod run;
 pub mod skip;
+pub mod unarchive;

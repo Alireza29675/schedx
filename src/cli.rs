@@ -74,6 +74,14 @@ pub enum Commands {
         /// Request body for webhook
         #[arg(long)]
         body: Option<String>,
+
+        /// Command to run if this job fails
+        #[arg(long)]
+        on_failure: Option<String>,
+
+        /// Use shell execution for the failure command
+        #[arg(long)]
+        on_failure_shell: bool,
     },
 
     /// List scheduled jobs
@@ -85,6 +93,10 @@ pub enum Commands {
         /// Filter by tag
         #[arg(long)]
         tag: Option<String>,
+
+        /// Show all jobs including archived
+        #[arg(long, conflicts_with = "status")]
+        all: bool,
     },
 
     /// Show details for a specific job
@@ -151,6 +163,12 @@ pub enum Commands {
 
     /// Resume a paused job
     Resume {
+        /// Job ID or name
+        id: String,
+    },
+
+    /// Restore an archived job back to completed status
+    Unarchive {
         /// Job ID or name
         id: String,
     },
@@ -237,6 +255,34 @@ pub enum Commands {
         /// Claimed run ID (scheduled runs only)
         #[arg(long)]
         run_id: Option<String>,
+    },
+
+    /// Internal: execute fallback for a failed job (hidden)
+    #[command(hide = true)]
+    #[command(name = "_exec-fallback")]
+    ExecFallback {
+        /// Job ID
+        job_id: String,
+
+        /// Run ID of the failed execution
+        #[arg(long)]
+        failed_run_id: String,
+
+        /// Status of the failed run
+        #[arg(long)]
+        failed_status: String,
+
+        /// Exit code of the failed run
+        #[arg(long, default_value = "")]
+        failed_exit_code: String,
+
+        /// Absolute path to the failed run's log file
+        #[arg(long)]
+        failed_log_path: String,
+
+        /// When the failed run was scheduled (RFC-3339)
+        #[arg(long)]
+        failed_scheduled_for: String,
     },
 }
 

@@ -53,6 +53,13 @@ fn format_status_line(job: &Job, now: DateTime<Utc>) -> String {
                 "Completed".to_string()
             }
         }
+        JobStatus::Archived => {
+            if let Some(ref last) = job.last_run {
+                format!("Archived (last run: {})", last.status.as_str())
+            } else {
+                "Archived".to_string()
+            }
+        }
         JobStatus::Paused => {
             if let Some(next_time) = compute_next_run_raw(job) {
                 format!("Paused  (would run {})", format_datetime(next_time))
@@ -169,6 +176,14 @@ pub fn format_job_detail(job: &Job) -> String {
             format_datetime(last.finished_at),
             last.status,
         ));
+    }
+
+    if let Some(ref cmd) = job.on_failure {
+        let redacted = redact_command(cmd);
+        lines.push(format!("On failure: {redacted}"));
+        if job.on_failure_shell {
+            lines.push("On failure shell: yes".to_string());
+        }
     }
 
     lines.join("\n")
