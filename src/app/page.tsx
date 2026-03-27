@@ -19,7 +19,7 @@ export default function Home() {
             </p>
             <div className="hero-install">
               <code>curl -sL schedx.run/get | bash</code>
-              <CopyButton text="curl -sL schedx.run/get | bash" />
+              <CopyButton text="curl -sL schedx.run/get | bash" umamiEvent="copy-install-command" />
             </div>
             <div className="hero-links">
               <a
@@ -27,6 +27,7 @@ export default function Home() {
                 className="hero-btn hero-btn-star"
                 target="_blank"
                 rel="noopener noreferrer"
+                data-umami-event="click-github"
               >
                 Star on GitHub
                 <span className="star-tooltip">help it get seen :)</span>
@@ -36,6 +37,7 @@ export default function Home() {
                 className="hero-btn hero-btn-secondary"
                 target="_blank"
                 rel="noopener noreferrer"
+                data-umami-event="click-examples"
               >
                 Examples
               </a>
@@ -274,7 +276,7 @@ export default function Home() {
         <div className="mid-cta">
           <div className="install-box">
             <code>curl -sL schedx.run/get | bash</code>
-            <CopyButton text="curl -sL schedx.run/get | bash" />
+            <CopyButton text="curl -sL schedx.run/get | bash" umamiEvent="copy-install-command" />
             <span>[Bin]</span>
           </div>
         </div>
@@ -338,12 +340,12 @@ export default function Home() {
         <div className="cta-group">
           <div className="install-box">
             <code>curl -sL schedx.run/get | bash</code>
-            <CopyButton text="curl -sL schedx.run/get | bash" />
+            <CopyButton text="curl -sL schedx.run/get | bash" umamiEvent="copy-install-command" />
             <span>[Bin]</span>
           </div>
           <div className="install-box">
             <code>cargo install schedx --locked</code>
-            <CopyButton text="cargo install schedx --locked" />
+            <CopyButton text="cargo install schedx --locked" umamiEvent="copy-cargo-install" />
             <span>[Rust]</span>
           </div>
           <div className="footer-meta">

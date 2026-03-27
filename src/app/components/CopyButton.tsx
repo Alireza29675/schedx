@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, umamiEvent }: { text: string; umamiEvent?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -16,6 +16,7 @@ export function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       className="copy-btn"
       aria-label="Copy to clipboard"
+      {...(umamiEvent ? { "data-umami-event": umamiEvent } : {})}
     >
       {copied ? (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

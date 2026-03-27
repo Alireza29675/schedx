@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { DevAgentation } from "./components/DevAgentation";
 
@@ -51,6 +52,13 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
+      <head>
+        <Script
+          src="https://cloud.umami.is/script.js"
+          data-website-id="74342574-d190-4c8a-924a-27ea3f425101"
+          strategy="afterInteractive"
+        />
+      </head>
       <body>
           {children}
           <DevAgentation />
