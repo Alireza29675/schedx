@@ -29,19 +29,12 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "schedx — The scheduler for the autonomous age",
+  title: "schedx — Scheduler CLI for recurring jobs, agent prompts, and webhooks",
   description:
-    "Schedule commands, agent prompts, and webhooks. One CLI. Local-first. Built for humans and agents.",
-  icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
+    "One tool to schedule everything. Cron jobs, one-shot tasks, webhook calls, and AI agent prompts. Local-first, file-based, built for humans and agents.",
   openGraph: {
-    title: "schedx — The scheduler for the autonomous age",
-    description: "Schedule commands, agent prompts, and webhooks. One CLI. Local-first. Built for humans and agents.",
+    title: "schedx",
+    description: "Scheduler CLI for recurring jobs, agent prompts, and webhooks",
     url: "https://schedx.run",
     siteName: "schedx",
     type: "website",

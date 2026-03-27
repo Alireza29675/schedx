@@ -170,17 +170,6 @@ section::after {
   font-weight: 700;
   line-height: 1;
   margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.logo-icon {
-  flex-shrink: 0;
-}
-
-.logo-x {
-  color: var(--accent);
 }
 
 .hero-desc {
@@ -771,7 +760,6 @@ section::after {
   .hero-right { justify-content: flex-start; }
   .agent-chat { width: 100%; height: 240px; }
   .logo { font-size: 3rem; }
-  .logo-icon { width: 30px; height: 30px; }
   .blocks-grid { grid-template-columns: 1fr; }
   .workflow-item { grid-template-columns: 1fr; gap: 2rem; }
   .workflow-item::before { display: none; }
