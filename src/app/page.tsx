@@ -11,7 +11,20 @@ export default function Home() {
             <div className="meta-label" style={{ marginBottom: "1rem" }}>
               The scheduler for the autonomous age
             </div>
-            <h1 className="logo">schedx</h1>
+            <h1 className="logo">
+              <svg className="logo-icon" width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="2" y="2" width="5" height="5" fill="#b8e0ff" />
+                <rect x="9" y="2" width="5" height="5" fill="#1a1a1a" />
+                <rect x="16" y="2" width="5" height="5" fill="#b8e0ff" />
+                <rect x="2" y="9" width="5" height="5" fill="#1a1a1a" />
+                <rect x="9" y="9" width="5" height="5" fill="#b8e0ff" />
+                <rect x="16" y="9" width="5" height="5" fill="#1a1a1a" />
+                <rect x="2" y="16" width="5" height="5" fill="#b8e0ff" />
+                <rect x="9" y="16" width="5" height="5" fill="#1a1a1a" />
+                <rect x="16" y="16" width="5" height="5" fill="#b8e0ff" />
+              </svg>
+              sched<span className="logo-x">x</span>
+            </h1>
             <p className="hero-desc">
               Schedule commands, agent prompts, and webhooks.
               <br />
