@@ -1,0 +1,23 @@
+# schedx
+
+> Local-first scheduler CLI for recurring jobs, AI agent prompts, and webhooks. One tool to schedule shell commands (--run), AI agent prompts (--prompt), and HTTP webhooks (--webhook) using cron, human intervals, one-shot timers, or ISO-8601 timestamps. Written in Rust. All state lives as plain files under ~/.schedx/.
+
+## Documentation
+- [Reference](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md): Complete CLI reference — all commands, flags, defaults, config keys, and examples
+- [Examples](https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md): Real-world recipes for DevOps, webhooks, AI agent workflows, and monitoring
+- [README](https://github.com/Alireza29675/schedx/blob/main/README.md): Project overview, quick start, and installation
+
+## API / CLI
+- [Commands Reference](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md#commands-reference): Every command with flags, types, and defaults
+- [Schedule Formats](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md#schedule-formats): Cron, intervals, one-shot, ISO-8601
+- [Configuration](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md#schedx-config): Config keys and environment variables
+- [Agent Integration](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md#agent-integration): Setting up AI agents for --prompt jobs
+
+## Agent Skills
+- [SKILL.md](https://github.com/Alireza29675/schedx/blob/main/skills/SKILL.md): Agent Skills standard file (Claude Code, Codex, Copilot, VS Code)
+- [Skills README](https://github.com/Alireza29675/schedx/blob/main/skills/README.md): Installation guide for all agent platforms
+
+## Optional
+- [Security](https://github.com/Alireza29675/schedx/blob/main/SECURITY.md): Security policy and vulnerability reporting
+- [Technical Spec](https://github.com/Alireza29675/schedx/blob/main/docs/SPEC.md): Internal architecture specification
+- [Contributing](https://github.com/Alireza29675/schedx/blob/main/docs/ONBOARDING.md): Contributor guide

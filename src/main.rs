@@ -104,6 +104,8 @@ fn main() -> ExitCode {
 
         Commands::Agent { command } => commands::agent::execute(command, cli.json),
 
+        Commands::Skill { command } => commands::skill::execute(command, cli.json),
+
         Commands::Config { key, value } => {
             commands::config::execute(key.as_deref(), value.as_deref(), cli.json)
         }
