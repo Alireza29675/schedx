@@ -5,9 +5,10 @@ Skill files that teach AI coding agents how to use schedx.
 ## Automatic installation
 
 ```bash
-schedx skill install          # Interactive — picks detected agents
-schedx skill install --all    # Install for all detected agents
-schedx skill install --agent claude   # Install for a specific agent
+schedx setup                  # Interactive — detects and installs for found agents
+schedx setup --all            # Install for all detected agents
+schedx setup --agent claude   # Install for a specific agent
+schedx setup --list           # Check installed skills and versions
 ```
 
 ## Manual installation

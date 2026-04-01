@@ -4,8 +4,6 @@ use std::process::Command;
 
 use anyhow::{Result, bail};
 
-use crate::cli::SkillCommands;
-
 /// Version embedded in installed skill files for tracking.
 const SKILL_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -19,25 +17,27 @@ const OPENCODE_MD: &str = include_str!("../../skills/opencode.md");
 /// The five known agent targets for skill installation.
 const KNOWN_AGENTS: &[&str] = &["claude", "codex", "cursor", "gemini", "opencode"];
 
-pub fn execute(command: &SkillCommands, json_output: bool) -> Result<()> {
-    match command {
-        SkillCommands::Install {
-            agent,
-            all,
-            force,
-            dry_run,
-        } => {
-            let opts = InstallOpts {
-                agent: agent.as_deref(),
-                all: *all,
-                force: *force,
-                dry_run: *dry_run,
-                json_output,
-            };
-            install(&opts)
-        }
-        SkillCommands::List => list_skills(json_output),
+#[allow(clippy::fn_params_excessive_bools)]
+pub fn execute(
+    agent: Option<&str>,
+    all: bool,
+    force: bool,
+    dry_run: bool,
+    list: bool,
+    json_output: bool,
+) -> Result<()> {
+    if list {
+        return list_skills(json_output);
     }
+
+    let opts = InstallOpts {
+        agent,
+        all,
+        force,
+        dry_run,
+        json_output,
+    };
+    install(&opts)
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -109,7 +109,7 @@ fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
         } else {
             println!("No supported agents detected.");
             println!("Install one of: Claude Code, Codex, Cursor, Gemini CLI, or OpenCode.");
-            println!("Or specify an agent directly: schedx skill install --agent claude");
+            println!("Or specify an agent directly: schedx setup --agent claude");
         }
     }
 

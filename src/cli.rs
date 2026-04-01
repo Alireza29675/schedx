@@ -213,10 +213,27 @@ pub enum Commands {
         command: AgentCommands,
     },
 
-    /// Install or list agent skills that teach AI coding agents how to use schedx
-    Skill {
-        #[command(subcommand)]
-        command: SkillCommands,
+    /// Detect AI coding agents and install schedx skills for them
+    Setup {
+        /// Install for a specific agent (claude, codex, cursor, gemini, opencode)
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Install for all detected agents without prompting
+        #[arg(long)]
+        all: bool,
+
+        /// Overwrite existing skill files
+        #[arg(long)]
+        force: bool,
+
+        /// Show what would be installed without writing files
+        #[arg(long)]
+        dry_run: bool,
+
+        /// List installed skills and their status (no installation)
+        #[arg(long)]
+        list: bool,
     },
 
     /// Read or set configuration
@@ -335,27 +352,3 @@ pub enum AgentCommands {
     },
 }
 
-#[derive(Subcommand)]
-pub enum SkillCommands {
-    /// Install schedx skills for AI coding agents
-    Install {
-        /// Install for a specific agent (claude, codex, cursor, gemini, opencode)
-        #[arg(long)]
-        agent: Option<String>,
-
-        /// Install for all detected agents
-        #[arg(long)]
-        all: bool,
-
-        /// Overwrite existing skill files
-        #[arg(long)]
-        force: bool,
-
-        /// Show what would be installed without writing files
-        #[arg(long)]
-        dry_run: bool,
-    },
-
-    /// List installed agent skills and their status
-    List,
-}
