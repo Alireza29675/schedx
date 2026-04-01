@@ -78,9 +78,9 @@ fn install(opts: &InstallOpts<'_>) -> Result<()> {
     }
 
     if opts.json_output {
-        print_results_json(&results)?;
+        print_results_json(&results, &home)?;
     } else {
-        print_results_human(&results, opts.dry_run);
+        print_results_human(&results, opts.dry_run, &home);
     }
 
     Ok(())
@@ -116,22 +116,26 @@ fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
     Ok(detected)
 }
 
-fn print_results_json(results: &[SkillResult]) -> Result<()> {
+fn print_results_json(results: &[SkillResult], home: &Path) -> Result<()> {
     let json: Vec<_> = results
         .iter()
         .map(|r| {
-            serde_json::json!({
+            let mut obj = serde_json::json!({
                 "agent": r.agent,
                 "path": r.path,
                 "status": r.status,
-            })
+            });
+            if r.agent == "claude" {
+                obj["plugin_installed"] = serde_json::json!(is_claude_plugin_installed(home));
+            }
+            obj
         })
         .collect();
     println!("{}", serde_json::to_string_pretty(&json)?);
     Ok(())
 }
 
-fn print_results_human(results: &[SkillResult], dry_run: bool) {
+fn print_results_human(results: &[SkillResult], dry_run: bool, home: &Path) {
     let action = if dry_run {
         "Would install"
     } else {
@@ -174,8 +178,8 @@ fn print_results_human(results: &[SkillResult], dry_run: bool) {
     // Post-install notes for agents that need manual config.
     if !dry_run {
         for r in results {
-            if r.status == "installed" {
-                print_post_install_note(&r.agent, r.path.as_deref());
+            if r.status == "installed" || r.status == "already_installed" {
+                print_post_install_note(&r.agent, r.path.as_deref(), home);
             }
         }
     }
@@ -279,6 +283,21 @@ fn cursor_detected() -> bool {
         .is_ok_and(|o| o.status.success())
 }
 
+/// Check whether the schedx Claude Code plugin is registered in the plugin registry.
+fn is_claude_plugin_installed(home: &Path) -> bool {
+    let json_path = home.join(".claude/plugins/installed_plugins.json");
+    let Ok(content) = fs::read_to_string(&json_path) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return false;
+    };
+    value
+        .get("plugins")
+        .and_then(|v| v.as_object())
+        .is_some_and(|plugins| plugins.keys().any(|k| k.starts_with("schedx")))
+}
+
 fn display_path(path: &Path, home: &Path) -> String {
     if let Ok(rel) = path.strip_prefix(home) {
         format!("~/{}", rel.display())
@@ -287,8 +306,18 @@ fn display_path(path: &Path, home: &Path) -> String {
     }
 }
 
-fn print_post_install_note(agent: &str, path: Option<&str>) {
+fn print_post_install_note(agent: &str, path: Option<&str>, home: &Path) {
     match agent {
+        "claude" => {
+            if !is_claude_plugin_installed(home) {
+                println!();
+                println!("Note for Claude Code:");
+                println!("  The schedx plugin is not installed.");
+                println!(
+                    "  Run `/plugin install schedx` in Claude Code for auto-install on session start."
+                );
+            }
+        }
         "gemini" => {
             println!();
             println!("Note for Gemini CLI:");
@@ -323,7 +352,7 @@ fn list_skills(json_output: bool) -> Result<()> {
         if primary.exists() {
             let version = read_skill_version(&primary);
             let outdated = version.as_deref() != Some(SKILL_VERSION);
-            let status = if outdated {
+            let mut status = if outdated {
                 format!(
                     "installed (v{}, current: v{SKILL_VERSION})",
                     version.as_deref().unwrap_or("unknown")
@@ -331,6 +360,14 @@ fn list_skills(json_output: bool) -> Result<()> {
             } else {
                 format!("installed (v{SKILL_VERSION})")
             };
+            if agent == "claude" {
+                let plugin_tag = if is_claude_plugin_installed(&home) {
+                    " | plugin: installed"
+                } else {
+                    " | plugin: not installed"
+                };
+                status.push_str(plugin_tag);
+            }
             entries.push(SkillResult {
                 agent: agent.to_string(),
                 path: Some(display_path(&primary, &home)),
@@ -346,7 +383,7 @@ fn list_skills(json_output: bool) -> Result<()> {
     }
 
     if json_output {
-        print_results_json(&entries)?;
+        print_results_json(&entries, &home)?;
     } else {
         println!("{:<12} {:<40} Path", "Agent", "Status");
         for r in &entries {
