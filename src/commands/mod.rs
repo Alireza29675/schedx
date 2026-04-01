@@ -14,6 +14,7 @@ pub mod repair;
 pub mod resume;
 pub mod rm;
 pub mod run;
+pub mod skill;
 pub mod skip;
 pub mod unarchive;
 pub mod upgrade;

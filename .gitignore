@@ -8,3 +8,6 @@
 /*.zip
 /dist/
 /artifacts/
+node_modules/
+ui/.vite/
+ui/dist/
