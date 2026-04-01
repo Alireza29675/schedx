@@ -37,7 +37,17 @@ pub fn execute(
         dry_run,
         json_output,
     };
-    install(&opts)
+    install(&opts)?;
+
+    // After installing skills, also register detected agent profiles.
+    if !dry_run {
+        if !json_output {
+            println!();
+        }
+        super::agent::detect_agents(force, json_output)?;
+    }
+
+    Ok(())
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -258,15 +268,11 @@ fn skill_target(agent: &str, home: &Path) -> (Vec<(&'static str, &'static str)>,
 
 /// Check if an agent binary is available on `PATH`.
 fn is_agent_detected(agent: &str) -> bool {
-    let bin = match agent {
-        "claude" | "codex" | "gemini" | "opencode" => agent,
-        "cursor" => return cursor_detected(),
-        _ => return false,
-    };
-    Command::new("which")
-        .arg(bin)
-        .output()
-        .is_ok_and(|o| o.status.success())
+    match agent {
+        "claude" | "codex" | "gemini" | "opencode" => crate::util::detect::is_binary_on_path(agent),
+        "cursor" => cursor_detected(),
+        _ => false,
+    }
 }
 
 /// Cursor doesn't have a single CLI binary to check.

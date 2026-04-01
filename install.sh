@@ -135,7 +135,7 @@ main() {
         esac
     else
         echo ""
-        echo "Run 'schedx setup' to install skills for your AI coding agents."
+        echo "Run 'schedx setup' to install skills and register detected agents."
     fi
 }
 

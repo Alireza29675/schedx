@@ -350,4 +350,11 @@ pub enum AgentCommands {
         /// Agent name
         name: String,
     },
+
+    /// Auto-detect AI coding agents on PATH and register them
+    Detect {
+        /// Overwrite profiles for known agents already registered
+        #[arg(long)]
+        force: bool,
+    },
 }
