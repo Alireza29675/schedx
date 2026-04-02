@@ -64,8 +64,14 @@ pub fn execute(json_output: bool) -> Result<ExitCode> {
     // Check 5: Stale in-flight runs
     check_stale_in_flight(&mut findings);
 
-    let error_count = findings.iter().filter(|f| f.severity == Severity::Error).count();
-    let warn_count = findings.iter().filter(|f| f.severity == Severity::Warn).count();
+    let error_count = findings
+        .iter()
+        .filter(|f| f.severity == Severity::Error)
+        .count();
+    let warn_count = findings
+        .iter()
+        .filter(|f| f.severity == Severity::Warn)
+        .count();
 
     if json_output {
         let output = serde_json::json!({
@@ -75,10 +81,18 @@ pub fn execute(json_output: bool) -> Result<ExitCode> {
         });
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
-        println!("schedx doctor — {} check{}", findings.len(), if findings.len() == 1 { "" } else { "s" });
+        println!(
+            "schedx doctor — {} check{}",
+            findings.len(),
+            if findings.len() == 1 { "" } else { "s" }
+        );
         println!();
         for f in &findings {
-            let hint_line = f.hint.as_deref().map(|h| format!("\n           Hint: {h}")).unwrap_or_default();
+            let hint_line = f
+                .hint
+                .as_deref()
+                .map(|h| format!("\n           Hint: {h}"))
+                .unwrap_or_default();
             println!("  [{}] {}{}", f.severity.label(), f.message, hint_line);
         }
         println!();
@@ -86,13 +100,26 @@ pub fn execute(json_output: bool) -> Result<ExitCode> {
             println!("All checks passed.");
         } else {
             let parts: Vec<String> = [
-                (error_count > 0).then(|| format!("{error_count} error{}", if error_count == 1 { "" } else { "s" })),
-                (warn_count > 0).then(|| format!("{warn_count} warning{}", if warn_count == 1 { "" } else { "s" })),
+                (error_count > 0).then(|| {
+                    format!(
+                        "{error_count} error{}",
+                        if error_count == 1 { "" } else { "s" }
+                    )
+                }),
+                (warn_count > 0).then(|| {
+                    format!(
+                        "{warn_count} warning{}",
+                        if warn_count == 1 { "" } else { "s" }
+                    )
+                }),
             ]
             .into_iter()
             .flatten()
             .collect();
-            println!("{}. Run `schedx repair` to fix automatically fixable issues.", parts.join(", "));
+            println!(
+                "{}. Run `schedx repair` to fix automatically fixable issues.",
+                parts.join(", ")
+            );
         }
     }
 
@@ -148,8 +175,8 @@ fn check_backend_health(findings: &mut Vec<Finding>) {
 
 #[cfg(target_os = "linux")]
 fn check_systemd_killmode(findings: &mut Vec<Finding>) {
-    let service_path = dirs::home_dir()
-        .map(|h| h.join(".config/systemd/user/schedx-dispatch.service"));
+    let service_path =
+        dirs::home_dir().map(|h| h.join(".config/systemd/user/schedx-dispatch.service"));
 
     let Some(path) = service_path else {
         findings.push(Finding {
@@ -217,7 +244,13 @@ fn check_chronic_failures(findings: &mut Vec<Finding>) {
         .jobs
         .values()
         .filter(|j| j.consecutive_failures >= threshold)
-        .map(|j| format!("'{}' ({} failures)", j.display_name(), j.consecutive_failures))
+        .map(|j| {
+            format!(
+                "'{}' ({} failures)",
+                j.display_name(),
+                j.consecutive_failures
+            )
+        })
         .collect();
 
     if chronic.is_empty() {
@@ -293,12 +326,13 @@ fn check_stale_in_flight(findings: &mut Vec<Finding>) {
         .jobs
         .values()
         .filter_map(|j| {
-            j.in_flight.as_ref().filter(|claim| {
-                now - claim.claimed_at > stale_threshold
-            }).map(|claim| {
-                let age_mins = (now - claim.claimed_at).num_minutes();
-                format!("'{}' (in-flight for {age_mins}m)", j.display_name())
-            })
+            j.in_flight
+                .as_ref()
+                .filter(|claim| now - claim.claimed_at > stale_threshold)
+                .map(|claim| {
+                    let age_mins = (now - claim.claimed_at).num_minutes();
+                    format!("'{}' (in-flight for {age_mins}m)", j.display_name())
+                })
         })
         .collect();
 

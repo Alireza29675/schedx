@@ -127,7 +127,11 @@ pub fn format_job_table(jobs: &[&Job], consecutive_failure_threshold: u32) -> St
         if consecutive_failure_threshold > 0
             && job.consecutive_failures >= consecutive_failure_threshold
         {
-            let noun = if job.consecutive_failures == 1 { "failure" } else { "failures" };
+            let noun = if job.consecutive_failures == 1 {
+                "failure"
+            } else {
+                "failures"
+            };
             card.push_str(&format!(
                 "\n           ⚠  {} consecutive {noun}",
                 job.consecutive_failures,

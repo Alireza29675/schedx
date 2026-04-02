@@ -100,7 +100,11 @@ pub fn exec_job_with_run_id(
             let err_str = format!("{e:#}");
             if let Ok(home) = paths::schedx_home() {
                 let abs_log = home.join(&log_path);
-                if let Ok(mut f) = std::fs::OpenOptions::new().append(true).create(true).open(abs_log) {
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(abs_log)
+                {
                     use std::io::Write as _;
                     writeln!(f, "[schedx internal error] {err_str}").ok();
                 }
