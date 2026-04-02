@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+use crate::backend;
 use crate::upgrade::{self, CURRENT_VERSION, InstallMethod};
 
 pub fn execute(force: bool, json_output: bool) -> Result<()> {
@@ -26,6 +27,7 @@ pub fn execute(force: bool, json_output: bool) -> Result<()> {
     match method {
         InstallMethod::Cargo => {
             upgrade::cargo::execute()?;
+            regenerate_dispatcher(json_output);
             if json_output {
                 let output = serde_json::json!({
                     "previous_version": CURRENT_VERSION,
@@ -35,11 +37,11 @@ pub fn execute(force: bool, json_output: bool) -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&output)?);
             } else {
                 println!("\nSuccessfully upgraded schedx to v{latest}.");
-                println!("Dispatcher will use the new version on next tick.");
             }
         }
         InstallMethod::Binary => {
             let (install_path, _digest) = upgrade::binary::execute(&latest)?;
+            regenerate_dispatcher(json_output);
             if json_output {
                 let output = serde_json::json!({
                     "previous_version": CURRENT_VERSION,
@@ -51,10 +53,26 @@ pub fn execute(force: bool, json_output: bool) -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&output)?);
             } else {
                 println!("\nSuccessfully upgraded schedx to v{latest}.");
-                println!("Dispatcher will use the new version on next tick.");
             }
         }
     }
 
     Ok(())
+}
+
+/// Regenerate the backend dispatcher service files after upgrade so any fixes
+/// (e.g. KillMode=process) take effect immediately without a manual repair step.
+fn regenerate_dispatcher(json_output: bool) {
+    match backend::detect_backend() {
+        Ok(be) => {
+            if let Err(e) = be.ensure_dispatcher() {
+                if !json_output {
+                    eprintln!("Warning: Could not update dispatcher service files: {e:#}");
+                }
+            } else if !json_output {
+                println!("Dispatcher service files updated.");
+            }
+        }
+        Err(_) => {} // No supported backend (e.g. daemon mode) — skip silently
+    }
 }

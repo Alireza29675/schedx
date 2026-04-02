@@ -253,7 +253,20 @@ pub enum Commands {
     },
 
     /// Repair backend and state
-    Repair,
+    Repair {
+        /// Suppress informational output (only show errors)
+        #[arg(long)]
+        quiet: bool,
+    },
+
+    /// Run self-diagnostics and report health issues
+    Doctor,
+
+    /// (Re)generate the system scheduler backend files
+    SetupBackend {
+        /// Backend to configure: "systemd" or "launchd"
+        backend: String,
+    },
 
     /// Run the scheduler daemon in the foreground
     Daemon {

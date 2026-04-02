@@ -14,6 +14,7 @@ const VALID_KEYS: &[&str] = &[
     "on_failure_shell",
     "max_concurrent_fallbacks",
     "archive_after_hours",
+    "consecutive_failure_threshold",
 ];
 
 pub fn execute(key: Option<&str>, value: Option<&str>, json_output: bool) -> Result<()> {
@@ -44,6 +45,10 @@ pub fn execute(key: Option<&str>, value: Option<&str>, json_output: bool) -> Res
                     cfg.max_concurrent_fallbacks
                 );
                 println!("archive_after_hours = {}", cfg.archive_after_hours);
+                println!(
+                    "consecutive_failure_threshold = {}",
+                    cfg.consecutive_failure_threshold
+                );
             }
             Ok(())
         }
@@ -90,6 +95,7 @@ fn get_config_value(cfg: &crate::model::config::AppConfig, key: &str) -> Result<
         "on_failure_shell" => cfg.on_failure_shell.to_string(),
         "max_concurrent_fallbacks" => cfg.max_concurrent_fallbacks.to_string(),
         "archive_after_hours" => cfg.archive_after_hours.to_string(),
+        "consecutive_failure_threshold" => cfg.consecutive_failure_threshold.to_string(),
         _ => bail!("Unknown key: {key}"),
     })
 }
@@ -164,6 +170,11 @@ fn set_config_value(
                 bail!("Error: archive_after_hours must be <= 8760 (1 year).");
             }
             cfg.archive_after_hours = v;
+        }
+        "consecutive_failure_threshold" => {
+            cfg.consecutive_failure_threshold = value
+                .parse()
+                .map_err(|_| anyhow::anyhow!("Error: '{value}' is not a valid integer."))?;
         }
         _ => bail!("Unknown key: {key}"),
     }

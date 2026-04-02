@@ -89,7 +89,8 @@ fn format_status_line(job: &Job, now: DateTime<Utc>) -> String {
 }
 
 /// Format a list of jobs as a human-readable card-style list.
-pub fn format_job_table(jobs: &[&Job]) -> String {
+/// `consecutive_failure_threshold`: if > 0, show a warning for jobs with this many consecutive failures.
+pub fn format_job_table(jobs: &[&Job], consecutive_failure_threshold: u32) -> String {
     if jobs.is_empty() {
         return "No jobs found.".to_string();
     }
@@ -120,7 +121,20 @@ pub fn format_job_table(jobs: &[&Job]) -> String {
         // Line 3: next run / last status
         let line3 = format!("           {}", format_status_line(job, now));
 
-        blocks.push(format!("{line1}\n{line2}\n{line3}"));
+        let mut card = format!("{line1}\n{line2}\n{line3}");
+
+        // Line 4 (optional): consecutive failure warning
+        if consecutive_failure_threshold > 0
+            && job.consecutive_failures >= consecutive_failure_threshold
+        {
+            let noun = if job.consecutive_failures == 1 { "failure" } else { "failures" };
+            card.push_str(&format!(
+                "\n           ⚠  {} consecutive {noun}",
+                job.consecutive_failures,
+            ));
+        }
+
+        blocks.push(card);
     }
 
     blocks.join("\n\n")
@@ -176,6 +190,9 @@ pub fn format_job_detail(job: &Job) -> String {
             format_datetime(last.finished_at),
             last.status,
         ));
+        if let Some(ref msg) = last.error_message {
+            lines.push(format!("  Error: {msg}"));
+        }
     }
 
     if let Some(ref cmd) = job.on_failure {

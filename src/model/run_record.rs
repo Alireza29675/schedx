@@ -53,6 +53,9 @@ pub struct RunRecord {
     /// Set when `trigger == Fallback` — links back to the failed run that triggered this.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failed_run_id: Option<String>,
+    /// Internal error message when status is `InternalError` and the log file is empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
 }
 
 /// What triggered a run.
@@ -96,4 +99,7 @@ pub struct LastRun {
     pub status: RunStatus,
     pub exit_code: Option<i32>,
     pub log_path: String,
+    /// Internal error message when status is `InternalError` and the log file is empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_message: Option<String>,
 }

@@ -130,6 +130,7 @@ pub fn execute(
         on_failure: on_failure.map(str::to_string),
         on_failure_shell,
         completed_at: None,
+        consecutive_failures: 0,
     };
 
     // Save under lock

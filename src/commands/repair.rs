@@ -6,7 +6,7 @@ use crate::engine::dispatcher;
 use crate::store::paths;
 use crate::store::state;
 
-pub fn execute(json_output: bool) -> Result<()> {
+pub fn execute(quiet: bool, json_output: bool) -> Result<()> {
     let mut messages: Vec<String> = Vec::new();
 
     // Ensure directory structure
@@ -71,6 +71,20 @@ pub fn execute(json_output: bool) -> Result<()> {
             "messages": messages,
         });
         println!("{}", serde_json::to_string_pretty(&output)?);
+    } else if quiet {
+        // In quiet mode, only show errors/warnings (lines that suggest problems)
+        for msg in &messages {
+            let lower = msg.to_lowercase();
+            if lower.contains("error")
+                || lower.contains("failed")
+                || lower.contains("missing")
+                || lower.contains("warn")
+                || lower.contains("could not")
+                || lower.contains("issue")
+            {
+                eprintln!("{msg}");
+            }
+        }
     } else {
         for msg in &messages {
             println!("{msg}");
