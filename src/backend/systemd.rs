@@ -58,6 +58,7 @@ Description=schedx dispatcher tick
 [Service]
 Type=oneshot
 ExecStart={schedx_path} _dispatch
+KillMode=process
 "
         );
 
@@ -135,7 +136,19 @@ impl Backend for SystemdBackend {
             messages.push("Timer unit file missing".to_string());
             healthy = false;
         }
-        if !self.service_path().exists() {
+        if self.service_path().exists() {
+            // Verify KillMode=process is present — without it, systemd kills spawned _exec
+            // child processes when the oneshot dispatch service exits.
+            let content = fs::read_to_string(self.service_path()).unwrap_or_default();
+            if !content.contains("KillMode=process") {
+                messages.push(
+                    "Service file missing KillMode=process — spawned _exec processes may be \
+                     killed prematurely. Run: schedx repair"
+                        .to_string(),
+                );
+                healthy = false;
+            }
+        } else {
             messages.push("Service unit file missing".to_string());
             healthy = false;
         }

@@ -71,6 +71,7 @@ pub fn exec_job_with_run_id(
                 exit_code: None,
                 log_path: String::new(),
                 failed_run_id: None,
+                error_message: None,
             };
             history::append_record(&record)?;
         }
@@ -84,17 +85,32 @@ pub fn exec_job_with_run_id(
     let result = execute_action(&job, log_file);
 
     let finished_at = Utc::now();
-    let (status, exit_code) = match &result {
+    let (status, exit_code, error_message) = match &result {
         Ok((code, timed_out)) => {
             if *timed_out {
-                (RunStatus::Timeout, *code)
+                (RunStatus::Timeout, *code, None)
             } else if code == &Some(0) {
-                (RunStatus::Success, *code)
+                (RunStatus::Success, *code, None)
             } else {
-                (RunStatus::Failed, *code)
+                (RunStatus::Failed, *code, None)
             }
         }
-        Err(_) => (RunStatus::InternalError, None),
+        Err(e) => {
+            // Write the error to the log file so `schedx logs` shows what went wrong.
+            let err_str = format!("{e:#}");
+            if let Ok(home) = paths::schedx_home() {
+                let abs_log = home.join(&log_path);
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(abs_log)
+                {
+                    use std::io::Write as _;
+                    writeln!(f, "[schedx internal error] {err_str}").ok();
+                }
+            }
+            (RunStatus::InternalError, None, Some(err_str))
+        }
     };
 
     // Update job state
@@ -121,7 +137,15 @@ pub fn exec_job_with_run_id(
                 status,
                 exit_code,
                 log_path: log_path.clone(),
+                error_message: error_message.clone(),
             });
+
+            // Track consecutive failures for alerting
+            if status.should_trigger_fallback() {
+                j.consecutive_failures = j.consecutive_failures.saturating_add(1);
+            } else if status == RunStatus::Success {
+                j.consecutive_failures = 0;
+            }
 
             // One-shot completion
             if j.is_one_shot() && !status.is_internal_error() {
@@ -144,6 +168,7 @@ pub fn exec_job_with_run_id(
         exit_code,
         log_path: log_path.clone(),
         failed_run_id: None,
+        error_message: error_message.clone(),
     };
     history::append_record(&record)?;
 
@@ -709,6 +734,7 @@ pub fn exec_fallback(
         exit_code,
         log_path: log_rel_path,
         failed_run_id: Some(failed_run_id.to_string()),
+        error_message: None,
     };
     history::append_record(&record)?;
 

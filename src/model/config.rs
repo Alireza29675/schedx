@@ -40,6 +40,9 @@ pub struct AppConfig {
     /// Hours after completion before a one-shot job is auto-archived (0 = disabled).
     #[serde(default = "default_archive_after_hours")]
     pub archive_after_hours: u64,
+    /// Number of consecutive failures before a job is flagged in `list` and `doctor`.
+    #[serde(default = "default_consecutive_failure_threshold")]
+    pub consecutive_failure_threshold: u32,
 }
 
 fn default_backup_count() -> u32 {
@@ -66,6 +69,10 @@ fn default_archive_after_hours() -> u64 {
     48
 }
 
+fn default_consecutive_failure_threshold() -> u32 {
+    5
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -80,6 +87,7 @@ impl Default for AppConfig {
             on_failure_shell: false,
             max_concurrent_fallbacks: default_max_concurrent_fallbacks(),
             archive_after_hours: default_archive_after_hours(),
+            consecutive_failure_threshold: default_consecutive_failure_threshold(),
         }
     }
 }

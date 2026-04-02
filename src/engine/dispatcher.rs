@@ -229,6 +229,7 @@ fn clear_claim_from_job(job: &mut Job, record: &RunRecord) {
         status: record.status,
         exit_code: record.exit_code,
         log_path: record.log_path.clone(),
+        error_message: record.error_message.clone(),
     });
 }
 
@@ -248,6 +249,7 @@ fn internal_error_record(
         exit_code: None,
         log_path: String::new(),
         failed_run_id: None,
+        error_message: None,
     }
 }
 
@@ -267,6 +269,7 @@ fn skipped_overlap_record(
         exit_code: None,
         log_path: String::new(),
         failed_run_id: None,
+        error_message: None,
     }
 }
 
@@ -415,6 +418,7 @@ mod tests {
             on_failure: None,
             on_failure_shell: false,
             completed_at: None,
+            consecutive_failures: 0,
         }
     }
 

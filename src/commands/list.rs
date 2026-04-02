@@ -3,6 +3,7 @@ use anyhow::Result;
 use crate::model::job::JobStatus;
 use crate::output::format::JobListEntry;
 use crate::output::table;
+use crate::store::config::load_config;
 use crate::store::state;
 
 pub fn execute(
@@ -49,11 +50,15 @@ pub fn execute(
     // Sort by creation time (newest first)
     jobs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
+    let threshold = load_config()
+        .map(|c| c.consecutive_failure_threshold)
+        .unwrap_or(5);
+
     if json_output {
         let entries: Vec<_> = jobs.iter().map(|j| JobListEntry::from_job(j)).collect();
         println!("{}", serde_json::to_string_pretty(&entries)?);
     } else {
-        println!("{}", table::format_job_table(&jobs));
+        println!("{}", table::format_job_table(&jobs, threshold));
         if archived_count > 0 {
             eprintln!(
                 "{archived_count} archived job{} hidden. Use --all to show.",

@@ -116,7 +116,14 @@ fn main() -> ExitCode {
             commands::config::execute(key.as_deref(), value.as_deref(), cli.json)
         }
 
-        Commands::Repair => commands::repair::execute(cli.json),
+        Commands::Repair { quiet } => commands::repair::execute(*quiet, cli.json),
+
+        Commands::Doctor => match commands::doctor::execute(cli.json) {
+            Ok(code) => return code,
+            Err(e) => Err(e),
+        },
+
+        Commands::SetupBackend { backend } => commands::setup_backend::execute(backend),
 
         Commands::Daemon { interval } => commands::daemon::execute(*interval),
 

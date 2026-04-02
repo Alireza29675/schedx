@@ -122,6 +122,16 @@ main() {
     echo ""
     echo "Run 'schedx --help' to get started."
 
+    # Set up backend dispatcher (systemd/launchd timer) automatically
+    echo ""
+    echo "Setting up scheduler backend..."
+    if "$INSTALL_DIR/schedx" repair --quiet 2>/dev/null; then
+        echo "Scheduler backend configured."
+    else
+        echo "Note: Could not configure scheduler backend automatically."
+        echo "Run 'schedx repair' after ensuring systemd/launchd is available."
+    fi
+
     # Offer to set up agent skills (only in interactive terminals)
     if [ -t 0 ]; then
         echo ""
@@ -135,7 +145,7 @@ main() {
         esac
     else
         echo ""
-        echo "Run 'schedx setup' to install skills for your AI coding agents."
+        echo "Run 'schedx setup' to install skills and register detected agents."
     fi
 }
 

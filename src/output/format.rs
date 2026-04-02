@@ -25,6 +25,7 @@ pub struct JobListEntry {
     pub last_run_status: Option<String>,
     pub last_run_at: Option<String>,
     pub last_run_at_readable: Option<String>,
+    pub consecutive_failures: u32,
 }
 
 impl JobListEntry {
@@ -47,6 +48,7 @@ impl JobListEntry {
                 .last_run
                 .as_ref()
                 .map(|r| format_datetime_with_relative(r.finished_at, now)),
+            consecutive_failures: job.consecutive_failures,
         }
     }
 }
@@ -76,6 +78,8 @@ pub struct JobDetail {
     pub on_failure: Option<String>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub on_failure_shell: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_run_error_message: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -192,6 +196,7 @@ impl JobDetail {
                 .join(" ")
             }),
             on_failure_shell: job.on_failure_shell,
+            last_run_error_message: job.last_run.as_ref().and_then(|r| r.error_message.clone()),
         }
     }
 }
@@ -409,6 +414,7 @@ mod tests {
             on_failure: None,
             on_failure_shell: false,
             completed_at: None,
+            consecutive_failures: 0,
         }
     }
 

@@ -82,6 +82,9 @@ pub struct Job {
     /// When a one-shot job completed (used for archive countdown).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<DateTime<Utc>>,
+    /// Number of consecutive `failed/timeout/internal_error` runs since last success.
+    #[serde(default)]
+    pub consecutive_failures: u32,
 }
 
 impl Job {
