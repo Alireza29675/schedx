@@ -1,5 +1,6 @@
 import { CopyButton } from "./components/CopyButton";
 import { AgentChat } from "./components/AgentChat";
+import { SchedxLogo } from "./components/SchedxLogo";
 
 export default function Home() {
   return (
@@ -11,7 +12,7 @@ export default function Home() {
             <div className="meta-label" style={{ marginBottom: "1rem" }}>
               The scheduler for the autonomous age
             </div>
-            <h1 className="logo">schedx</h1>
+            <SchedxLogo />
             <p className="hero-desc">
               Schedule commands, agent prompts, and webhooks.
               <br />

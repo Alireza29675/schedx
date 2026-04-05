@@ -170,6 +170,13 @@ section::after {
   font-weight: 700;
   line-height: 1;
   margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo .logo-visuals--wrapper {
+  margin-top: -1px;
 }
 
 .hero-desc {
