@@ -33,9 +33,6 @@ export const metadata: Metadata = {
   title: "schedx — Scheduler CLI for recurring jobs, agent prompts, and webhooks",
   description:
     "One tool to schedule everything. Cron jobs, one-shot tasks, webhook calls, and AI agent prompts. Local-first, file-based, built for humans and agents.",
-  icons: {
-    icon: { url: "/icon.svg", type: "image/svg+xml" },
-  },
   openGraph: {
     title: "schedx",
     description: "Scheduler CLI for recurring jobs, agent prompts, and webhooks",
