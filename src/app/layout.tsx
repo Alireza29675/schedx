@@ -47,7 +47,7 @@ export const metadata: Metadata = {
         url: "https://schedx.run/og.png",
         width: 1200,
         height: 630,
-        alt: "schedx — Scheduling tool. Built for agents and humans.",
+        alt: "schedx — Intuitive scheduling CLI tool. Built for agents and humans.",
       },
     ],
   },
