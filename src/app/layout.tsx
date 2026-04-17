@@ -39,6 +39,20 @@ export const metadata: Metadata = {
     url: "https://schedx.run",
     siteName: "schedx",
     type: "website",
+    images: [
+      {
+        url: "https://schedx.run/og.png",
+        width: 1200,
+        height: 630,
+        alt: "schedx — Scheduling tool. Built for agents and humans.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "schedx",
+    description: "Scheduler CLI for recurring jobs, agent prompts, and webhooks",
+    images: ["https://schedx.run/og.png"],
   },
 };
 
