@@ -2,6 +2,9 @@ mod backend;
 mod cli;
 mod commands;
 mod engine;
+// Not yet wired to a CLI command; `up`/`down` arrive in a follow-up slice.
+#[allow(dead_code)]
+mod manifest;
 mod model;
 mod output;
 mod schedule;
