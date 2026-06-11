@@ -4,20 +4,18 @@ use anyhow::{Result, bail};
 use chrono::Utc;
 
 use crate::backend;
+use crate::commands::action_input::{
+    build_prompt_action, build_run_action, build_webhook_action, parse_header_lines, parse_method,
+    validate_on_failure, validate_tags,
+};
 use crate::engine::lock::FileLock;
-use crate::model::action::{Action, HttpMethod};
+use crate::model::action::Action;
 use crate::model::job::{Job, JobStatus};
 use crate::schedule::parser::parse_schedule;
 use crate::store::config::load_config;
 use crate::store::paths;
 use crate::store::state;
 use crate::util::id::new_job_id;
-
-/// Input limits from spec.
-const MAX_COMMAND_LEN: usize = 32 * 1024;
-const MAX_PROMPT_LEN: usize = 128 * 1024;
-const MAX_TAGS: usize = 20;
-const MAX_TAG_LEN: usize = 64;
 
 #[allow(
     clippy::too_many_arguments,
@@ -72,21 +70,8 @@ pub fn execute(
     if on_failure_shell && on_failure.is_none() {
         bail!("Error: --on-failure-shell can only be used with --on-failure.");
     }
-    if let Some(cmd) = on_failure {
-        if cmd.len() > MAX_COMMAND_LEN {
-            bail!("Error: On-failure command exceeds maximum length of {MAX_COMMAND_LEN} bytes.");
-        }
-    }
-
-    // Validate tags
-    if tags.len() > MAX_TAGS {
-        bail!("Error: Maximum {MAX_TAGS} tags per job.");
-    }
-    for tag in tags {
-        if tag.len() > MAX_TAG_LEN {
-            bail!("Error: Tag '{tag}' exceeds maximum length of {MAX_TAG_LEN} characters.");
-        }
-    }
+    validate_on_failure(on_failure)?;
+    validate_tags(tags)?;
 
     // Build action (with possible stdin reading)
     let action = build_action(
@@ -196,14 +181,7 @@ fn build_action(
         } else {
             cmd.to_string()
         };
-        if command.len() > MAX_COMMAND_LEN {
-            bail!("Error: Command exceeds maximum length of {MAX_COMMAND_LEN} bytes.");
-        }
-        return Ok(Action::Run {
-            command,
-            shell,
-            workdir: workdir.map(str::to_string),
-        });
+        return build_run_action(command, shell, workdir.map(str::to_string));
     }
 
     if let Some(text) = prompt_text {
@@ -212,62 +190,16 @@ fn build_action(
         } else {
             text.to_string()
         };
-        if prompt.len() > MAX_PROMPT_LEN {
-            bail!("Error: Prompt exceeds maximum length of {MAX_PROMPT_LEN} bytes.");
-        }
-        return Ok(Action::Prompt {
-            text: prompt,
-            agent: agent.map(str::to_string),
-        });
+        return build_prompt_action(prompt, agent.map(str::to_string));
     }
 
     if let Some(url) = webhook_url {
-        // Validate URL
-        let parsed = url::Url::parse(url)
-            .map_err(|e| anyhow::anyhow!("Error: Invalid webhook URL '{url}': {e}"))?;
-        if parsed.scheme() != "http" && parsed.scheme() != "https" {
-            bail!("Error: Only http:// and https:// webhook URLs are supported.");
-        }
-
-        // Security check: HTTP requires config flag
-        if parsed.scheme() == "http" {
-            let config = load_config()?;
-            if !config.allow_insecure_http {
-                bail!(
-                    "Error: HTTP webhooks are blocked by default for security.\n\
-                     To allow: schedx config allow_insecure_http true"
-                );
-            }
-        }
-
-        let http_method = method
-            .map(str::parse::<HttpMethod>)
-            .transpose()
-            .map_err(|e| anyhow::anyhow!("Error: {e}"))?
-            .unwrap_or_default();
-
-        let parsed_headers = parse_headers(headers)?;
-
-        return Ok(Action::Webhook {
-            url: url.to_string(),
-            method: http_method,
-            headers: parsed_headers,
-            body: body.map(str::to_string),
-        });
+        let http_method = parse_method(method)?;
+        let parsed_headers = parse_header_lines(headers)?;
+        return build_webhook_action(url, http_method, parsed_headers, body.map(str::to_string));
     }
 
     unreachable!("validation ensures exactly one action is set");
-}
-
-fn parse_headers(headers: &[String]) -> Result<Vec<(String, String)>> {
-    let mut result = Vec::new();
-    for h in headers {
-        let (key, value) = h.split_once(':').ok_or_else(|| {
-            anyhow::anyhow!("Error: Invalid header format '{h}'. Expected 'Key: Value'.")
-        })?;
-        result.push((key.trim().to_string(), value.trim().to_string()));
-    }
-    Ok(result)
 }
 
 fn read_stdin() -> Result<String> {
