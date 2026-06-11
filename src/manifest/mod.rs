@@ -6,9 +6,12 @@
 
 pub mod env;
 pub mod parse;
+pub mod state;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 
 use crate::model::action::Action;
 
@@ -24,7 +27,10 @@ pub struct Manifest {
 }
 
 /// Desired state for one job, post-defaults, post-`${VAR}` expansion, validated.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Serialized into the manifest state file as the applied spec, so drift
+/// classification is a structural compare against what was last applied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct JobSpec {
     /// Raw schedule string, validated parseable (re-parsed at apply time).
     pub schedule_input: String,

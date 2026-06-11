@@ -85,6 +85,10 @@ pub struct Job {
     /// Number of consecutive `failed/timeout/internal_error` runs since last success.
     #[serde(default)]
     pub consecutive_failures: u32,
+    /// Name of the declarative manifest that owns this job (`schedx up`).
+    /// `None` for imperatively-added jobs, which `up`/`down` never touch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub managed_by: Option<String>,
 }
 
 impl Job {

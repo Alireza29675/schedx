@@ -419,6 +419,7 @@ mod tests {
             on_failure_shell: false,
             completed_at: None,
             consecutive_failures: 0,
+            managed_by: None,
         }
     }
 

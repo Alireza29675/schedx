@@ -116,6 +116,7 @@ pub fn execute(
         on_failure_shell,
         completed_at: None,
         consecutive_failures: 0,
+        managed_by: None,
     };
 
     // Save under lock
