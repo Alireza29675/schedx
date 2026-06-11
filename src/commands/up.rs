@@ -88,6 +88,7 @@ pub fn execute(file: &Path, dry_run: bool, force: bool, json_output: bool) -> Re
         &live,
         config.default_timeout_seconds,
         now,
+        force,
     )
     .map_err(|issues| issues_error(&format!("Cannot apply {}", file.display()), &issues))?;
 
@@ -125,6 +126,7 @@ pub fn execute(file: &Path, dry_run: bool, force: bool, json_output: bool) -> Re
                     &manifest,
                     &new_id_for,
                     config.default_timeout_seconds,
+                    now,
                 )?;
             }
             Ok(())
@@ -200,6 +202,7 @@ fn apply_action(
     manifest: &Manifest,
     new_id_for: &dyn Fn(&str) -> String,
     default_timeout_seconds: u64,
+    now: chrono::DateTime<Utc>,
 ) -> Result<()> {
     match action {
         PlanAction::Create { name, spec } => {
@@ -209,6 +212,7 @@ fn apply_action(
                 manifest,
                 &new_id_for(name),
                 default_timeout_seconds,
+                now,
             )?;
             s.jobs.insert(job.id.clone(), job);
         }
@@ -226,6 +230,7 @@ fn apply_action(
                 manifest,
                 &new_id_for(name),
                 default_timeout_seconds,
+                now,
             )?;
             s.jobs.insert(job.id.clone(), job);
         }
@@ -236,7 +241,6 @@ fn apply_action(
             schedule_changed,
             ..
         } => {
-            let now = Utc::now();
             let job = s
                 .jobs
                 .get_mut(job_id)
@@ -281,8 +285,8 @@ fn build_job(
     manifest: &Manifest,
     job_id: &str,
     default_timeout_seconds: u64,
+    now: chrono::DateTime<Utc>,
 ) -> Result<Job> {
-    let now = Utc::now();
     let parsed = parse_schedule(&spec.schedule_input, now)?;
     Ok(Job {
         id: job_id.to_string(),

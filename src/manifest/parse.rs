@@ -100,8 +100,13 @@ pub fn load_manifest(
     let mut jobs = BTreeMap::new();
     for (job_name, raw_job) in raw.jobs {
         let context = format!("jobs.{job_name}");
-        if job_name.is_empty() {
-            issues.push(ManifestIssue::new(context, "job name must not be empty"));
+        if !is_valid_manifest_name(&job_name) {
+            issues.push(ManifestIssue::new(
+                context,
+                format!(
+                    "invalid job name '{job_name}': must match [A-Za-z0-9][A-Za-z0-9._-]{{0,63}}"
+                ),
+            ));
             continue;
         }
         match build_job(&raw_job, &defaults, lookup, &context) {
@@ -176,8 +181,11 @@ pub fn derive_name_from_dir(manifest_path: &Path) -> String {
         .collect()
 }
 
-/// `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`
-fn is_valid_manifest_name(name: &str) -> bool {
+/// `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` — manifest AND job names. Names
+/// become filenames and appear in classified error messages, so the
+/// grammar deliberately excludes path separators, spaces, and control
+/// characters.
+pub(crate) fn is_valid_manifest_name(name: &str) -> bool {
     let bytes = name.as_bytes();
     !bytes.is_empty()
         && bytes.len() <= 64

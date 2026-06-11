@@ -78,6 +78,7 @@ pub fn compute_plan(
     live: &JobState,
     default_timeout_seconds: u64,
     now: DateTime<Utc>,
+    force: bool,
 ) -> Result<Plan, Vec<ManifestIssue>> {
     let mut issues = Vec::new();
     let mut warnings = Vec::new();
@@ -91,10 +92,26 @@ pub fn compute_plan(
     let mut actions = Vec::new();
 
     for (name, spec) in &manifest.jobs {
-        if let Some(job_id) = owned.get(name) {
+        if let Some(owned_job) = owned.get(name) {
+            let job_id = &owned_job.job_id;
             let job = &live.jobs[job_id];
-            if let Some(flight) = &job.in_flight {
-                if !matches(spec, job, name, &manifest.name, default_timeout_seconds) {
+            let differs = !matches(spec, job, name, &manifest.name, default_timeout_seconds);
+            if differs && !owned_job.verified && !force {
+                // The crux guard: marker-only ownership cannot prove this
+                // manifest created the job (a same-named manifest from
+                // another directory leaves identical markers). A
+                // byte-identical spec is harmless; a mutation is not.
+                issues.push(ManifestIssue::new(
+                    format!("jobs.{name}"),
+                    format!(
+                        "job '{name}' ({job_id}) carries the '{}' marker but no state file confirms this manifest owns it; refusing to modify it. If this manifest legitimately owns it (state file was lost), re-run with --force",
+                        manifest.name
+                    ),
+                ));
+                continue;
+            }
+            if differs {
+                if let Some(flight) = &job.in_flight {
                     warnings.push(format!(
                         "job '{name}' ({job_id}) has run {} in flight; updating anyway",
                         flight.run_id
@@ -145,9 +162,21 @@ pub fn compute_plan(
         }
     }
 
-    // Owned jobs no longer declared: orphan prune.
-    for (name, job_id) in &owned {
+    // Owned jobs no longer declared: orphan prune. Marker-only ownership
+    // never authorizes destruction without --force (see OwnedJob.verified).
+    for (name, owned_job) in &owned {
         if !manifest.jobs.contains_key(name) {
+            let job_id = &owned_job.job_id;
+            if !owned_job.verified && !force {
+                issues.push(ManifestIssue::new(
+                    format!("jobs.{name}"),
+                    format!(
+                        "job '{name}' ({job_id}) carries the '{}' marker but no state file confirms this manifest owns it; refusing to remove it. If this manifest legitimately owns it (state file was lost), re-run with --force",
+                        manifest.name
+                    ),
+                ));
+                continue;
+            }
             if let Some(flight) = &live.jobs[job_id].in_flight {
                 warnings.push(format!(
                     "job '{name}' ({job_id}) has run {} in flight; removing anyway",
@@ -168,31 +197,53 @@ pub fn compute_plan(
     }
 }
 
-/// Declared name -> owned live job id. Belt-and-braces: recorded entries
+/// One owned live job, with the provenance of that ownership claim.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OwnedJob {
+    pub job_id: String,
+    /// `true` when a state-file entry confirms this manifest applied this
+    /// exact job. Marker-only recovery (state file lost or torn) cannot
+    /// verify provenance — a same-named manifest from another directory
+    /// produces identical markers — so destructive actions against
+    /// unverified ownership are gated on `--force`.
+    pub verified: bool,
+}
+
+/// Declared name -> owned live job. Belt-and-braces: recorded entries
 /// are validated against live markers; marker-only jobs (state file lost
-/// or torn) are recovered by job name. Shared with `down`.
+/// or torn) are recovered by job name, but flagged unverified. Shared
+/// with `down`.
 pub fn resolve_owned(
     manifest_name: &str,
     prior: Option<&ManifestState>,
     live: &JobState,
-) -> BTreeMap<String, String> {
+) -> BTreeMap<String, OwnedJob> {
     let mut owned = BTreeMap::new();
 
     if let Some(prior) = prior {
         for (name, applied) in &prior.jobs {
             if let Some(job) = live.jobs.get(&applied.job_id) {
                 if job.managed_by.as_deref() == Some(manifest_name) {
-                    owned.insert(name.clone(), applied.job_id.clone());
+                    owned.insert(
+                        name.clone(),
+                        OwnedJob {
+                            job_id: applied.job_id.clone(),
+                            verified: true,
+                        },
+                    );
                 }
             }
         }
     }
 
-    // Marker scan recovers ownership the record missed.
+    // Marker scan recovers ownership the record missed — unverified.
     for job in live.jobs.values() {
         if job.managed_by.as_deref() == Some(manifest_name) {
             if let Some(job_name) = &job.name {
-                owned.entry(job_name.clone()).or_insert(job.id.clone());
+                owned.entry(job_name.clone()).or_insert(OwnedJob {
+                    job_id: job.id.clone(),
+                    verified: false,
+                });
             }
         }
     }
@@ -398,7 +449,15 @@ mod tests {
         prior: Option<&ManifestState>,
         l: &JobState,
     ) -> Result<Plan, Vec<ManifestIssue>> {
-        compute_plan(m, prior, l, DEFAULT_TIMEOUT, Utc::now())
+        compute_plan(m, prior, l, DEFAULT_TIMEOUT, Utc::now(), false)
+    }
+
+    fn plan_forced(
+        m: &Manifest,
+        prior: Option<&ManifestState>,
+        l: &JobState,
+    ) -> Result<Plan, Vec<ManifestIssue>> {
+        compute_plan(m, prior, l, DEFAULT_TIMEOUT, Utc::now(), true)
     }
 
     #[test]
@@ -677,6 +736,60 @@ mod tests {
                 job_id: "id1".to_string()
             }]
         );
+    }
+
+    #[test]
+    fn marker_only_prune_is_refused_without_force() {
+        // THE cross-prune guard: manifest B (same derived name, different
+        // project) must not destroy A's jobs via marker-only recovery.
+        let a_spec = spec("every 1h", "echo A's backup");
+        let a_job = live_job("idA", "backup", "app", &a_spec);
+        // B's manifest also resolves to name "app" but declares other jobs;
+        // A's state file is gone (crash window / collision scenario).
+        let b = manifest("app", vec![("deploy", spec("every 5m", "echo deploy"))]);
+        let issues = plan(&b, None, &live(vec![a_job.clone()])).unwrap_err();
+        assert_eq!(issues.len(), 1);
+        assert!(
+            issues[0].message.contains("no state file confirms")
+                && issues[0].message.contains("--force"),
+            "got: {}",
+            issues[0].message
+        );
+        // --force is the explicit escape for legitimate lost-state recovery.
+        let p = plan_forced(&b, None, &live(vec![a_job])).unwrap();
+        assert!(p.actions.contains(&PlanAction::Remove {
+            name: "backup".to_string(),
+            job_id: "idA".to_string()
+        }));
+    }
+
+    #[test]
+    fn marker_only_mutation_is_refused_without_force() {
+        // Same guard for hijack-by-update: B declares A's job name with a
+        // different spec.
+        let a_spec = spec("every 1h", "echo A");
+        let a_job = live_job("idA", "shared", "app", &a_spec);
+        let b = manifest("app", vec![("shared", spec("every 5m", "echo B"))]);
+        let issues = plan(&b, None, &live(vec![a_job])).unwrap_err();
+        assert_eq!(issues.len(), 1);
+        assert!(
+            issues[0].message.contains("refusing to modify"),
+            "got: {}",
+            issues[0].message
+        );
+    }
+
+    #[test]
+    fn marker_only_identical_spec_still_self_heals() {
+        // The crash window that matters: jobs were just written from THIS
+        // yaml, state file write was lost. Byte-identical spec = harmless,
+        // heals without --force (asserted by the existing
+        // lost_state_file_recovers_ownership_from_markers too).
+        let s = spec("every 1h", "echo a");
+        let job = live_job("id1", "a", "demo", &s);
+        let m = manifest("demo", vec![("a", s)]);
+        let p = plan(&m, None, &live(vec![job])).unwrap();
+        assert!(p.is_noop());
     }
 
     #[test]

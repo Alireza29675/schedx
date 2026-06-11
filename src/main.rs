@@ -207,9 +207,10 @@ fn main() -> ExitCode {
 fn classify_error(e: &anyhow::Error) -> u8 {
     let msg = format!("{e:#}");
 
-    if msg.contains("not found") {
-        3
-    } else if msg.contains("Could not parse schedule")
+    // Specific classes first: manifest errors embed user-controlled job
+    // names and yaml content, so the generic "not found" check must not
+    // shadow them.
+    if msg.contains("Could not parse schedule")
         || msg.contains("Invalid cron")
         || msg.contains("Empty schedule")
         || msg.contains("in the past")
@@ -234,8 +235,13 @@ fn classify_error(e: &anyhow::Error) -> u8 {
         || msg.contains("Invalid status")
         || msg.contains("Unknown config key")
         || msg.contains("exceeds maximum")
+        || msg.contains("invalid manifest name")
+        || msg.contains("invalid job name")
+        || msg.contains("no state file confirms")
     {
         2
+    } else if msg.contains("not found") {
+        3
     } else {
         1
     }

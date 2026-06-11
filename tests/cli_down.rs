@@ -264,3 +264,31 @@ jobs:
         .stdout(predicate::str::contains("removed precious"));
     assert_eq!(job_count(&env), 0);
 }
+
+#[test]
+fn down_manifest_flag_rejects_path_traversal() {
+    // Roaster MAJOR regression: --manifest is a path component of the
+    // state file; traversal / absolute values must be rejected before
+    // they touch the filesystem.
+    let env = TestEnv::new();
+    let dir = tempfile::tempdir().unwrap();
+    let yaml = write_yaml(
+        dir.path(),
+        "name: traversal\njobs:\n  j:\n    schedule: every 1h\n    run: echo x\n",
+    );
+    env.cmd()
+        .args(["up", "-f", yaml.to_str().unwrap()])
+        .assert()
+        .success();
+
+    for evil in ["../manifests/traversal", "/etc/passwd", "a/b"] {
+        env.cmd()
+            .args(["down", "--manifest", evil])
+            .assert()
+            .failure()
+            .code(2)
+            .stderr(predicate::str::contains("invalid manifest name"));
+    }
+    // The state file is untouched by the attempts.
+    assert!(env.home().join("manifests/traversal.json").exists());
+}

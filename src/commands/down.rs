@@ -12,7 +12,7 @@ use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::engine::lock::FileLock;
-use crate::manifest::parse::derive_name_from_dir;
+use crate::manifest::parse::{derive_name_from_dir, is_valid_manifest_name};
 use crate::manifest::plan::resolve_owned;
 use crate::manifest::state::{delete_manifest_state, load_manifest_state};
 use crate::store::paths;
@@ -109,9 +109,17 @@ pub fn execute(
     }
 
     let mut warnings = Vec::new();
+    let mut unverified: Vec<String> = Vec::new();
     let removed: Vec<RemovedJob> = owned
         .iter()
-        .filter_map(|(job_name, job_id)| {
+        .filter_map(|(job_name, owned_job)| {
+            let job_id = &owned_job.job_id;
+            // Marker-only ownership cannot prove this manifest created the
+            // job (same guard as `up`): never destroy on it without --force.
+            if !owned_job.verified && !force {
+                unverified.push(format!("'{job_name}' ({job_id})"));
+                return None;
+            }
             live.jobs.get(job_id).map(|job| {
                 if let Some(flight) = &job.in_flight {
                     warnings.push(format!(
@@ -128,6 +136,12 @@ pub fn execute(
             })
         })
         .collect();
+    if !unverified.is_empty() {
+        bail!(
+            "Error: job(s) {} carry the '{name}' marker but no state file confirms this manifest owns them; refusing to remove. If this manifest legitimately owns them (state file was lost), re-run with --force.",
+            unverified.join(", ")
+        );
+    }
 
     if !dry_run {
         if !removed.is_empty() {
@@ -155,6 +169,14 @@ pub fn execute(
 /// was targeted explicitly via `--manifest`.
 fn resolve_target(file: &Path, manifest_arg: Option<&str>) -> Result<(String, bool)> {
     if let Some(name) = manifest_arg {
+        // The name becomes a path component of the state file — reject
+        // anything outside the manifest-name grammar before it can
+        // traverse (`../x`, `/abs`, separators are all invalid).
+        if !is_valid_manifest_name(name) {
+            bail!(
+                "Error: invalid manifest name '{name}': must match [A-Za-z0-9][A-Za-z0-9._-]{{0,63}}"
+            );
+        }
         return Ok((name.to_string(), true));
     }
 

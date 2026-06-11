@@ -680,6 +680,7 @@ A completed one-shot with an unchanged spec stays completed (`up` never re-fires
 ### State and safety
 
 - Each manifest records what it applied in `~/.schedx/manifests/<name>.json`. Two manifests resolving to the same name from different directories are refused (this is what prevents one project's `up` from pruning another's jobs); `--force` accepts a deliberate move.
+- If the state file is lost (crash, deleted directory), ownership recovers from the markers on the jobs themselves: an unchanged manifest re-records its state automatically, but **modifying or removing a job whose ownership can't be confirmed requires `--force`** — a same-named manifest from another directory can never silently destroy jobs it didn't create.
 - Validation reports **all** problems at once, and any error means **nothing** is applied.
 - The whole reconcile lands in one atomic `jobs.json` write — there is no partially-applied state to recover from.
 

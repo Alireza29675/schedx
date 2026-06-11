@@ -829,3 +829,70 @@ jobs:
         .stdout(predicate::str::contains("No changes"));
     assert_eq!(job_json(&env, "toggler")["status"], "active");
 }
+
+#[test]
+fn missing_state_file_does_not_let_same_named_manifest_cross_prune() {
+    // Roaster CRITICAL regression: two projects with same-basename dirs
+    // derive the same manifest name; if A's state file is lost (crash
+    // window), B's `up` must NOT adopt-and-prune A's jobs.
+    let env = TestEnv::new();
+    let dir_a = tempfile::tempdir().unwrap();
+    let proj_a = dir_a.path().join("app");
+    std::fs::create_dir(&proj_a).unwrap();
+    let yaml_a = write_yaml(
+        &proj_a,
+        "jobs:\n  backup:\n    schedule: every 1h\n    run: echo A\n",
+    );
+    env.cmd()
+        .args(["up", "-f", yaml_a.to_str().unwrap()])
+        .assert()
+        .success();
+
+    // Simulate the crash window: state file gone, marker remains.
+    std::fs::remove_file(env.home().join("manifests/app.json")).unwrap();
+
+    let dir_b = tempfile::tempdir().unwrap();
+    let proj_b = dir_b.path().join("app"); // same basename, unrelated project
+    std::fs::create_dir(&proj_b).unwrap();
+    let yaml_b = write_yaml(
+        &proj_b,
+        "jobs:\n  deploy:\n    schedule: every 5m\n    run: echo B\n",
+    );
+    env.cmd()
+        .args(["up", "-f", yaml_b.to_str().unwrap()])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("no state file confirms"));
+
+    // A's job survived.
+    let backup = job_json(&env, "backup");
+    assert_eq!(backup["action"]["command"], "echo A");
+
+    // And B's `down` must not destroy it either.
+    env.cmd()
+        .args(["down", "-f", yaml_b.to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no state file confirms"));
+    job_json(&env, "backup");
+}
+
+#[test]
+fn job_name_grammar_rejects_spaces_and_separators() {
+    // Job names reach classified error messages and reports — the grammar
+    // forbids spaces and control chars so e.g. a name containing "not found" can
+    // never hijack the exit-code classification.
+    let env = TestEnv::new();
+    let dir = tempfile::tempdir().unwrap();
+    let yaml = write_yaml(
+        dir.path(),
+        "name: grammar\njobs:\n  not found:\n    schedule: whenever\n    run: echo x\n",
+    );
+    env.cmd()
+        .args(["up", "-f", yaml.to_str().unwrap()])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("invalid job name 'not found'"));
+}
