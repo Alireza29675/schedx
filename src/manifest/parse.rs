@@ -142,15 +142,27 @@ fn resolve_name(
         return String::new();
     }
 
-    let dir_name = canonical
+    let sanitized = derive_name_from_dir(canonical);
+    if sanitized.is_empty() {
+        issues.push(ManifestIssue::new(
+            "manifest",
+            "cannot derive a manifest name from the file's directory; set 'name:' explicitly",
+        ));
+    }
+    sanitized
+}
+
+/// Sanitize a manifest file's parent directory name into a manifest name.
+/// Same shape as the explicit-name rule: leading char must be alphanumeric
+/// (no hidden state files from `.config`, no flag-lookalikes from `-foo`),
+/// capped at 64. Empty result = underivable. Shared with `down`.
+pub fn derive_name_from_dir(manifest_path: &Path) -> String {
+    let dir_name = manifest_path
         .parent()
         .and_then(Path::file_name)
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    // Same shape as the explicit-name rule: leading char must be
-    // alphanumeric (no hidden state files from `.config`, no
-    // flag-lookalikes from `-foo`), capped at 64.
-    let sanitized: String = dir_name
+    dir_name
         .chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
@@ -161,14 +173,7 @@ fn resolve_name(
         })
         .skip_while(|c| !c.is_ascii_alphanumeric())
         .take(64)
-        .collect();
-    if sanitized.is_empty() {
-        issues.push(ManifestIssue::new(
-            "manifest",
-            "cannot derive a manifest name from the file's directory; set 'name:' explicitly",
-        ));
-    }
-    sanitized
+        .collect()
 }
 
 /// `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`

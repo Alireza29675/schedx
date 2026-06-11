@@ -84,6 +84,40 @@ pub enum Commands {
         on_failure_shell: bool,
     },
 
+    /// Apply a declarative manifest (schedx.yaml), reconciling the job store to match
+    Up {
+        /// Path to the manifest file
+        #[arg(short = 'f', long, default_value = "schedx.yaml")]
+        file: std::path::PathBuf,
+
+        /// Show what would change without applying anything
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Accept a moved manifest file (updates the recorded path)
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Remove the jobs a declarative manifest owns
+    Down {
+        /// Path to the manifest file
+        #[arg(short = 'f', long, default_value = "schedx.yaml")]
+        file: std::path::PathBuf,
+
+        /// Target a manifest by name instead of by file (works after the yaml is gone)
+        #[arg(long, conflicts_with = "file")]
+        manifest: Option<String>,
+
+        /// Show what would be removed without removing anything
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Accept a moved manifest file (skips the recorded-path check)
+        #[arg(long)]
+        force: bool,
+    },
+
     /// List scheduled jobs
     List {
         /// Filter by status

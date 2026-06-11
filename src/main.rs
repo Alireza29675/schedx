@@ -2,8 +2,6 @@ mod backend;
 mod cli;
 mod commands;
 mod engine;
-// Not yet wired to a CLI command; `up`/`down` arrive in a follow-up slice.
-#[allow(dead_code)]
 mod manifest;
 mod model;
 mod output;
@@ -59,6 +57,19 @@ fn main() -> ExitCode {
             *on_failure_shell,
             cli.json,
         ),
+
+        Commands::Up {
+            file,
+            dry_run,
+            force,
+        } => commands::up::execute(file, *dry_run, *force, cli.json),
+
+        Commands::Down {
+            file,
+            manifest,
+            dry_run,
+            force,
+        } => commands::down::execute(file, manifest.as_deref(), *dry_run, *force, cli.json),
 
         Commands::List { status, tag, all } => {
             commands::list::execute(status.as_deref(), tag.as_deref(), *all, cli.json)
@@ -214,7 +225,11 @@ fn classify_error(e: &anyhow::Error) -> u8 {
         || msg.contains("lingering is disabled")
     {
         6
-    } else if msg.contains("Exactly one action")
+    } else if msg.contains("Invalid manifest")
+        || msg.contains("already in use by")
+        || msg.contains("already exists and is not managed")
+        || msg.contains("is managed by manifest")
+        || msg.contains("Exactly one action")
         || msg.contains("can only be used with")
         || msg.contains("Invalid status")
         || msg.contains("Unknown config key")

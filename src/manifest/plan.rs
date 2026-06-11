@@ -86,7 +86,7 @@ pub fn compute_plan(
     // validated against the live job's marker; live jobs carrying our
     // marker but missing from the record (state file lost or torn between
     // the two writes) are recovered by their job name.
-    let owned = resolve_owned(manifest, prior, live);
+    let owned = resolve_owned(&manifest.name, prior, live);
 
     let mut actions = Vec::new();
 
@@ -168,9 +168,11 @@ pub fn compute_plan(
     }
 }
 
-/// Declared name -> owned live job id.
-fn resolve_owned(
-    manifest: &Manifest,
+/// Declared name -> owned live job id. Belt-and-braces: recorded entries
+/// are validated against live markers; marker-only jobs (state file lost
+/// or torn) are recovered by job name. Shared with `down`.
+pub fn resolve_owned(
+    manifest_name: &str,
     prior: Option<&ManifestState>,
     live: &JobState,
 ) -> BTreeMap<String, String> {
@@ -179,7 +181,7 @@ fn resolve_owned(
     if let Some(prior) = prior {
         for (name, applied) in &prior.jobs {
             if let Some(job) = live.jobs.get(&applied.job_id) {
-                if job.managed_by.as_deref() == Some(manifest.name.as_str()) {
+                if job.managed_by.as_deref() == Some(manifest_name) {
                     owned.insert(name.clone(), applied.job_id.clone());
                 }
             }
@@ -188,7 +190,7 @@ fn resolve_owned(
 
     // Marker scan recovers ownership the record missed.
     for job in live.jobs.values() {
-        if job.managed_by.as_deref() == Some(manifest.name.as_str()) {
+        if job.managed_by.as_deref() == Some(manifest_name) {
             if let Some(job_name) = &job.name {
                 owned.entry(job_name.clone()).or_insert(job.id.clone());
             }
