@@ -6,6 +6,7 @@
 
 pub mod env;
 pub mod parse;
+pub mod plan;
 pub mod state;
 
 use std::collections::BTreeMap;

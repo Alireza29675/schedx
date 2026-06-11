@@ -9,7 +9,6 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use chrono::Utc;
 use serde::Deserialize;
 
 use crate::commands::action_input::{
@@ -17,7 +16,6 @@ use crate::commands::action_input::{
     validate_tags,
 };
 use crate::manifest::{JobSpec, Manifest, env};
-use crate::schedule::parser::parse_schedule;
 
 /// One validation problem, located by `context` (e.g. `jobs.backup-home`
 /// or `manifest`).
@@ -28,7 +26,7 @@ pub struct ManifestIssue {
 }
 
 impl ManifestIssue {
-    fn new(context: impl Into<String>, message: impl Into<String>) -> Self {
+    pub(crate) fn new(context: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             context: context.into(),
             message: message.into(),
@@ -282,13 +280,10 @@ fn build_job(
             strip_error_prefix(&format!("{e:#}")),
         ));
     }
-    // Validation only; apply-time re-parses.
-    if let Err(e) = parse_schedule(&schedule, Utc::now()) {
-        issues.push(ManifestIssue::new(
-            context,
-            strip_error_prefix(&format!("{e:#}")),
-        ));
-    }
+    // Schedule parseability is deliberately NOT validated here: a completed
+    // one-shot's past ISO date must not brick an otherwise-unchanged
+    // manifest. The plan stage validates schedules for jobs it will
+    // create/update/recreate (unchanged jobs are never re-parsed).
     if !issues.is_empty() {
         return Err(issues);
     }
@@ -660,9 +655,9 @@ jobs:
             "
 name: x
 jobs:
-  bad-schedule:
-    schedule: whenever
-    run: echo hi
+  bad-env:
+    schedule: every 1h
+    run: echo ${NOPE}
   two-actions:
     schedule: every 1h
     run: echo hi
@@ -672,7 +667,7 @@ jobs:
 
         let issues = load_manifest(&path, &no_env).unwrap_err();
         assert_eq!(issues.len(), 2);
-        assert!(issues.iter().any(|i| i.context == "jobs.bad-schedule"));
+        assert!(issues.iter().any(|i| i.context == "jobs.bad-env"));
         assert!(issues.iter().any(|i| i.context == "jobs.two-actions"));
     }
 
@@ -698,7 +693,10 @@ jobs:
     }
 
     #[test]
-    fn invalid_schedule_preserves_parser_wording() {
+    fn invalid_schedule_is_accepted_at_parse_time() {
+        // Schedule parseability is validated at PLAN time, only for jobs
+        // being created/updated — a completed one-shot's past date must
+        // not brick an unchanged manifest. See plan-stage tests.
         let dir = tempfile::tempdir().unwrap();
         let path = write_manifest(
             dir.path(),
@@ -711,14 +709,8 @@ jobs:
 ",
         );
 
-        let issues = load_manifest(&path, &no_env).unwrap_err();
-        assert_eq!(issues.len(), 1);
-        assert_eq!(issues[0].context, "jobs.j1");
-        assert!(
-            issues[0].message.contains("Could not parse schedule"),
-            "got: {}",
-            issues[0].message
-        );
+        let manifest = load_manifest(&path, &no_env).unwrap();
+        assert_eq!(manifest.jobs["j1"].schedule_input, "whenever");
     }
 
     #[test]
