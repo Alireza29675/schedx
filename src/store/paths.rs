@@ -56,6 +56,14 @@ pub fn update_check_file() -> Result<PathBuf> {
     Ok(schedx_home()?.join("update-check.json"))
 }
 
+pub fn manifests_dir() -> Result<PathBuf> {
+    Ok(schedx_home()?.join("manifests"))
+}
+
+pub fn manifest_state_file(manifest_name: &str) -> Result<PathBuf> {
+    Ok(manifests_dir()?.join(format!("{manifest_name}.json")))
+}
+
 /// Ensure the full directory hierarchy exists with secure permissions.
 pub fn ensure_dirs() -> Result<()> {
     let home = schedx_home()?;
@@ -64,6 +72,7 @@ pub fn ensure_dirs() -> Result<()> {
         home.join("backups"),
         home.join("logs"),
         home.join("locks"),
+        home.join("manifests"),
     ] {
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("failed to create directory: {}", dir.display()))?;

@@ -251,6 +251,75 @@ schedx add "0 2 * * *" --run "./backup.sh" \
 
 ---
 
+### `schedx up`
+
+Apply a declarative manifest (`schedx.yaml`), reconciling the job store to match it. See [Declarative Manifests](#declarative-manifests-schedxyaml) for the file format and semantics.
+
+```
+schedx up [flags]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-f, --file <path>` | `schedx.yaml` | Path to the manifest file |
+| `--dry-run` | false | Show what would change without applying anything |
+| `--force` | false | Accept a moved manifest file (updates the recorded path) |
+| `--json` | false | Output the reconcile report as JSON |
+
+`up` is idempotent: running it twice in a row changes nothing the second time. Jobs added with `schedx add` are never touched.
+
+**Examples:**
+
+```bash
+# Preview the changes
+schedx up --dry-run
+
+# Apply
+schedx up
+
+# Apply a manifest from another directory
+schedx up -f ~/projects/backups/schedx.yaml
+```
+
+---
+
+### `schedx down`
+
+Remove the jobs a declarative manifest owns. Jobs added with `schedx add` are never touched.
+
+```
+schedx down [flags]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-f, --file <path>` | `schedx.yaml` | Path to the manifest file |
+| `--manifest <name>` | — | Target a manifest by name instead of by file (works after the yaml is gone) |
+| `--dry-run` | false | Show what would be removed without removing anything |
+| `--force` | false | Skip the recorded-path check (after moving the manifest file) |
+| `--json` | false | Output the removal report as JSON |
+
+`down` works even after the manifest file is deleted: run it from the manifest's directory, or pass `--manifest <name>`.
+
+**Examples:**
+
+```bash
+# Preview
+schedx down --dry-run
+
+# Remove everything this manifest created
+schedx down
+
+# The yaml is gone but the jobs remain
+schedx down --manifest backups
+```
+
+---
+
 ### `schedx list`
 
 List scheduled jobs. Shows active jobs by default.
@@ -531,6 +600,90 @@ schedx daemon [--interval <secs>]
 |------|---------|-------------|
 | `--interval <secs>` | 10 | Dispatch tick interval in seconds |
 
+## Declarative Manifests (schedx.yaml)
+
+Declare all your schedules in one file, then `schedx up` to make the job store match it and `schedx down` to remove everything it created — think docker-compose for schedules.
+
+### File format
+
+```yaml
+name: home-server          # optional — defaults to the directory name
+defaults:                  # optional — fill fields a job omits
+  timeout: 300
+  tags: [declared]
+
+jobs:                      # map keyed by job name
+  backup-home:
+    schedule: "every 6h"   # same syntax as `schedx add`
+    run: "restic backup ~/"
+    shell: true            # optional (run only)
+    workdir: "~/"          # optional (run only)
+    timeout: 600           # optional seconds
+    tags: [backup]
+    paused: false          # optional — see "Pause" below
+    on_failure: "notify-send 'backup failed'"
+    on_failure_shell: true
+
+  daily-report:
+    schedule: "0 9 * * 1-5"
+    prompt: "Summarize yesterday's git activity"
+    agent: claude          # optional (prompt only)
+
+  ping:
+    schedule: "every 15m"
+    webhook: "https://example.com/hook"
+    method: POST           # optional, default POST
+    headers:
+      Authorization: "Bearer ${HOOK_TOKEN}"
+    body: '{"ping":true}'
+```
+
+Each job takes exactly one of `run`, `prompt`, or `webhook`, with the same validation and security rules as `schedx add` (HTTPS-required webhooks, no shell unless explicit, same length limits). Unknown keys are rejected — a typo is an error, never silently ignored.
+
+### Environment variables
+
+`${VAR}` in any string value expands from the environment at `up` time, so secrets stay out of the committed file:
+
+```yaml
+headers:
+  Authorization: "Bearer ${HOOK_TOKEN}"
+```
+
+- A missing variable is a hard error (named, with the job context) — nothing is applied.
+- `$${` escapes a literal `${`; a lone `$` is literal.
+- Changing a variable's value counts as a change: the next `up` updates the job.
+
+### How `up` reconciles
+
+`up` diffs the manifest against what it last applied and against the live store, then applies the whole result in one atomic write:
+
+| Situation | Action |
+|-----------|--------|
+| Job in yaml, not in store | created |
+| Job unchanged | untouched (`up` twice = "No changes") |
+| Yaml changed | updated **in place** — same id, run history preserved |
+| Job edited imperatively (e.g. `schedx edit`) | drift corrected back to the yaml |
+| Job removed imperatively (`schedx rm`) | recreated |
+| Job removed from the yaml | removed from the store |
+| Name owned by a job you added with `schedx add` | hard error — nothing applied, never adopted silently |
+
+Jobs created by `up` carry a `managed_by` marker; **jobs added imperatively with `schedx add` are never touched by `up` or `down`.**
+
+### Pause
+
+`paused:` is three-state: `true` keeps the job paused, `false` keeps it active, and *omitting it* leaves runtime pause alone — `schedx pause`/`resume` keep working without `up` fighting you.
+
+### One-shots
+
+A completed one-shot with an unchanged spec stays completed (`up` never re-fires it). To re-fire one, change its spec — the job is recreated fresh.
+
+### State and safety
+
+- Each manifest records what it applied in `~/.schedx/manifests/<name>.json`. Two manifests resolving to the same name from different directories are refused (this is what prevents one project's `up` from pruning another's jobs); `--force` accepts a deliberate move.
+- If the state file is lost (crash, deleted directory), ownership recovers from the markers on the jobs themselves: an unchanged manifest re-records its state automatically, but **modifying or removing a job whose ownership can't be confirmed requires `--force`** — a same-named manifest from another directory can never silently destroy jobs it didn't create.
+- Validation reports **all** problems at once, and any error means **nothing** is applied.
+- The whole reconcile lands in one atomic `jobs.json` write — there is no partially-applied state to recover from.
+
 ## Agent Integration
 
 ### Registering agents
@@ -590,6 +743,8 @@ All data lives under `~/.schedx/` (override with `SCHEDX_HOME` environment varia
 ~/.schedx/
 ├── jobs.json              # Source of truth — all job definitions
 ├── config.json            # User configuration and agent profiles
+├── manifests/             # Declarative manifest state (one file per `schedx up` manifest)
+│   └── {name}.json
 ├── run-history.jsonl      # Append-only run records (one JSON object per line)
 ├── locks/                 # File locks
 │   ├── state.lock         # Guards jobs.json mutations

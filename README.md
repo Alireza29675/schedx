@@ -59,6 +59,34 @@ schedx resume <job-id>
 schedx rm <job-id>
 ```
 
+## Declare Everything in One File
+
+Define all your schedules declaratively in a `schedx.yaml`, then reconcile with one command:
+
+```yaml
+name: my-jobs
+jobs:
+  backup:
+    schedule: "every 6h"
+    run: "restic backup ~/"
+  morning-brief:
+    schedule: "0 9 * * 1-5"
+    prompt: "Summarize my unread PRs"
+  slack-ping:
+    schedule: "every 15m"
+    webhook: "https://hooks.slack.com/services/T/B/X"
+    headers:
+      Authorization: "Bearer ${SLACK_TOKEN}"
+```
+
+```bash
+schedx up        # make the store match the file (idempotent, diff-based)
+schedx up --dry-run
+schedx down      # remove everything the file created
+```
+
+`up` updates in place, corrects drift, prunes what you delete from the file, and never touches jobs you added with `schedx add`. Secrets stay out of the file via `${VAR}` expansion. See the [reference](docs/REFERENCE.md#declarative-manifests-schedxyaml).
+
 ## What It Does
 
 **Three action types, one interface.** Schedule shell commands (`--run`), AI agent prompts (`--prompt`), and HTTP webhooks (`--webhook`) using the same CLI.

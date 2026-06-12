@@ -1,9 +1,11 @@
+pub(crate) mod action_input;
 pub mod add;
 pub mod agent;
 pub mod config;
 pub mod daemon;
 pub mod dispatch;
 pub mod doctor;
+pub mod down;
 pub mod edit;
 pub mod exec;
 pub mod get;
@@ -19,4 +21,5 @@ pub mod setup;
 pub mod setup_backend;
 pub mod skip;
 pub mod unarchive;
+pub mod up;
 pub mod upgrade;

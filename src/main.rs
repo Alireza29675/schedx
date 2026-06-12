@@ -2,6 +2,7 @@ mod backend;
 mod cli;
 mod commands;
 mod engine;
+mod manifest;
 mod model;
 mod output;
 mod schedule;
@@ -56,6 +57,19 @@ fn main() -> ExitCode {
             *on_failure_shell,
             cli.json,
         ),
+
+        Commands::Up {
+            file,
+            dry_run,
+            force,
+        } => commands::up::execute(file, *dry_run, *force, cli.json),
+
+        Commands::Down {
+            file,
+            manifest,
+            dry_run,
+            force,
+        } => commands::down::execute(file, manifest.as_deref(), *dry_run, *force, cli.json),
 
         Commands::List { status, tag, all } => {
             commands::list::execute(status.as_deref(), tag.as_deref(), *all, cli.json)
@@ -193,9 +207,10 @@ fn main() -> ExitCode {
 fn classify_error(e: &anyhow::Error) -> u8 {
     let msg = format!("{e:#}");
 
-    if msg.contains("not found") {
-        3
-    } else if msg.contains("Could not parse schedule")
+    // Specific classes first: manifest errors embed user-controlled job
+    // names and yaml content, so the generic "not found" check must not
+    // shadow them.
+    if msg.contains("Could not parse schedule")
         || msg.contains("Invalid cron")
         || msg.contains("Empty schedule")
         || msg.contains("in the past")
@@ -211,13 +226,22 @@ fn classify_error(e: &anyhow::Error) -> u8 {
         || msg.contains("lingering is disabled")
     {
         6
-    } else if msg.contains("Exactly one action")
+    } else if msg.contains("Invalid manifest")
+        || msg.contains("already in use by")
+        || msg.contains("already exists and is not managed")
+        || msg.contains("is managed by manifest")
+        || msg.contains("Exactly one action")
         || msg.contains("can only be used with")
         || msg.contains("Invalid status")
         || msg.contains("Unknown config key")
         || msg.contains("exceeds maximum")
+        || msg.contains("invalid manifest name")
+        || msg.contains("invalid job name")
+        || msg.contains("no state file confirms")
     {
         2
+    } else if msg.contains("not found") {
+        3
     } else {
         1
     }
