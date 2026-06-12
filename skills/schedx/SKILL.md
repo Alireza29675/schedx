@@ -101,6 +101,14 @@ schedx down           # remove every job the manifest created
 jobs deleted from the file. It never touches jobs added with `schedx add`.
 `${VAR}` expands from the environment, keeping secrets out of the file.
 
+**The file is the source of truth.** A manifest job is *managed*: change it by editing
+the file then running `schedx up` — not `schedx edit`/`schedx rm` (the next `up` reverts
+that drift). Add a job the same way: put it in the file, then `up`. `schedx add` makes an
+*unmanaged* one-off the manifest won't track, and there's no command to import it back —
+so working declaratively means keeping every new or changed job *in the file*. The loop:
+edit → `schedx up --dry-run` (preview) → `schedx up` (apply); `schedx down` tears the
+managed jobs down. See REFERENCE for `--file`, `down --manifest`, and new-machine setup.
+
 ## Key Behaviors
 
 - **No shell by default.** Commands are argv-split. Use `--shell` for shell interpretation.

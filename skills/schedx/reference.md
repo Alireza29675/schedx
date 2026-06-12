@@ -452,6 +452,36 @@ action is **recreated**; jobs deleted from the file are **pruned**; jobs you
 added with `schedx add` are never managed. Version a `schedx.yaml` in a repo and
 a new machine is one `schedx up` away from your whole setup.
 
+### Working with a manifest: the file is the source of truth
+
+A job declared in a manifest is **managed** — `schedx.yaml` owns it and `up`
+reconciles the store to match the file. So the workflow is file-first:
+
+- **Change a managed job in the file, then `schedx up`.** Editing it with
+  `schedx edit` (or deleting it with `schedx rm`) is drift: the next `schedx up`
+  reverts it to what the file declares. The file wins.
+- **Add a job by adding it to the file, then `schedx up`.** `schedx add` creates an
+  **unmanaged** job — handy for a quick one-off, but the manifest neither tracks nor
+  prunes it, and it lives outside the file. There is no `--adopt`/import that pulls an
+  `add` job back into the manifest, so "keeping the file up to date" is a deliberate,
+  manual act: if you want a job to be declarative, write it in the file.
+- **Managed vs unmanaged, at a glance:** `up` and `down` only ever touch jobs the
+  manifest owns; anything created with `schedx add` is invisible to reconciliation.
+
+The everyday loop:
+
+```bash
+$EDITOR schedx.yaml      # change the desired state
+schedx up --dry-run      # preview: + create / ~ update / - prune
+schedx up                # apply
+schedx down              # tear down every job this manifest owns
+```
+
+Use `-f <path>` / `--file <path>` for a manifest that isn't `./schedx.yaml`;
+`schedx down --manifest <name>` tears a manifest down by name even after its file is
+deleted; `--force` accepts a manifest that has moved on disk (updating the recorded
+path). On a new machine, drop the versioned `schedx.yaml` in place and run `schedx up`.
+
 ## JSON Output for Scripting
 
 ```bash
