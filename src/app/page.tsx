@@ -61,6 +61,7 @@ export default function Home() {
           <span className="meta-label">Cron</span>
           <span className="meta-label">Intervals</span>
           <span className="meta-label">One-shot</span>
+          <span className="meta-label">Declarative</span>
         </div>
       </section>
 
@@ -158,6 +159,112 @@ export default function Home() {
                 {"  "}
                 <span className="hl-flag">--webhook</span>{" "}
                 <span className="hl-val">https://hooks.slack.com/T00</span>
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Declarative */}
+      <section>
+        <h2>Declare It All in One File</h2>
+        <div className="workflow-list">
+          <div className="workflow-item">
+            <div className="workflow-info">
+              <span className="meta-label" style={{ marginBottom: "1rem" }}>
+                schedx.yaml
+              </span>
+              <h3>Schedules as a File</h3>
+              <p>
+                Declare every job in a <code>schedx.yaml</code>, then{" "}
+                <code>schedx up</code> makes reality match the file — new jobs
+                created, edits applied in place, drift corrected, deletions
+                pruned. Idempotent, previewable with <code>--dry-run</code>,
+                and it never touches jobs you added by hand.
+              </p>
+              <p>
+                Version it, review it, and a new machine is one{" "}
+                <code>schedx up</code> away from your whole setup. Secrets stay
+                out of the file with <code>{"${VAR}"}</code> expansion.
+              </p>
+            </div>
+            <div className="workflow-code copyable">
+              <CopyButton
+                text={`name: my-jobs\njobs:\n  backup:\n    schedule: "every 6h"\n    run: "restic backup ~/"\n  morning-brief:\n    schedule: "0 9 * * 1-5"\n    prompt: "Summarize my unread PRs"\n  slack-ping:\n    schedule: "every 15m"\n    webhook: "https://hooks.slack.com/T/B/X"\n    headers:\n      Authorization: "Bearer \${SLACK_TOKEN}"`}
+              />
+              <pre>
+                <span className="hl-flag">name:</span>{" "}
+                <span className="hl-val">my-jobs</span>
+                {"\n"}
+                <span className="hl-flag">jobs:</span>
+                {"\n"}
+                {"  "}
+                <span className="hl-cmd">backup:</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">schedule:</span>{" "}
+                <span className="hl-val">&quot;every 6h&quot;</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">run:</span>{" "}
+                <span className="hl-str">&quot;restic backup ~/&quot;</span>
+                {"\n"}
+                {"  "}
+                <span className="hl-cmd">morning-brief:</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">schedule:</span>{" "}
+                <span className="hl-val">&quot;0 9 * * 1-5&quot;</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">prompt:</span>{" "}
+                <span className="hl-str">&quot;Summarize my unread PRs&quot;</span>
+                {"\n"}
+                {"  "}
+                <span className="hl-cmd">slack-ping:</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">schedule:</span>{" "}
+                <span className="hl-val">&quot;every 15m&quot;</span>
+                {"\n"}
+                {"    "}
+                <span className="hl-flag">webhook:</span>{" "}
+                <span className="hl-str">
+                  &quot;https://hooks.slack.com/T/B/X&quot;
+                </span>
+              </pre>
+            </div>
+          </div>
+
+          <div className="workflow-item">
+            <div className="workflow-info">
+              <span className="meta-label" style={{ marginBottom: "1rem" }}>
+                Reconcile
+              </span>
+              <h3>One Command, Either Direction</h3>
+              <p>
+                <code>up</code> to apply, <code>down</code> to remove
+                everything the file created. Running <code>up</code> twice
+                changes nothing the second time — think docker-compose for
+                schedules.
+              </p>
+            </div>
+            <div className="workflow-code copyable">
+              <CopyButton
+                text={`schedx up --dry-run   # preview\nschedx up             # apply\nschedx down           # remove what the file created`}
+              />
+              <pre>
+                <span className="hl-cmd">schedx</span> up{" "}
+                <span className="hl-flag">--dry-run</span>{" "}
+                <span className="hl-str"># preview</span>
+                {"\n"}
+                <span className="hl-cmd">schedx</span> up{" "}
+                {"            "}
+                <span className="hl-str"># apply</span>
+                {"\n"}
+                <span className="hl-cmd">schedx</span> down{" "}
+                {"          "}
+                <span className="hl-str"># remove what the file created</span>
               </pre>
             </div>
           </div>
@@ -318,6 +425,12 @@ export default function Home() {
               <td>Job History</td>
               <td className="row-highlight">Per-job run history + logs</td>
               <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Declarative Config</td>
+              <td className="row-highlight">schedx.yaml + up / down</td>
+              <td>Crontab (no diff, no preview)</td>
               <td>No</td>
             </tr>
             <tr>
