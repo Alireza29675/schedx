@@ -33,16 +33,36 @@ pub fn execute(
         all,
         force,
         dry_run,
-        json_output,
     };
-    install(&opts)?;
+    let home =
+        dirs::home_dir().ok_or_else(|| anyhow::anyhow!("could not determine home directory"))?;
+    let results = collect_install(&opts, &home)?;
 
-    // After installing skills, also register detected agent profiles.
-    if !dry_run {
-        if !json_output {
-            println!();
+    if json_output {
+        // One combined document, so `schedx setup --json` stays parseable by jq
+        // (printing the skills array and a separate agents object would emit two
+        // top-level JSON values).
+        let mut doc = serde_json::json!({ "skills": skill_results_json(&results) });
+        if !dry_run {
+            let agents = super::agent::detect_agents_json(force)?;
+            doc["agents"] = agents["agents"].clone();
+            doc["default_agent"] = agents["default_agent"].clone();
         }
-        super::agent::detect_agents(force, json_output)?;
+        println!("{}", serde_json::to_string_pretty(&doc)?);
+    } else {
+        if results.is_empty() {
+            println!("No supported agents detected.");
+            println!("Install one of: Claude Code, Codex, Cursor, Gemini CLI, or OpenCode.");
+            println!("Or specify an agent directly: schedx setup --agent claude");
+            println!("Or install for all supported agents: schedx setup --all");
+        } else {
+            print_results_human(&results, dry_run, &home);
+        }
+        // Also register detected agent profiles for `--prompt` jobs.
+        if !dry_run {
+            println!();
+            super::agent::detect_agents(force, false)?;
+        }
     }
 
     Ok(())
@@ -54,22 +74,20 @@ struct InstallOpts<'a> {
     all: bool,
     force: bool,
     dry_run: bool,
-    json_output: bool,
 }
 
-/// Resolve which agents to install for, then write skill files.
-fn install(opts: &InstallOpts<'_>) -> Result<()> {
-    let home =
-        dirs::home_dir().ok_or_else(|| anyhow::anyhow!("could not determine home directory"))?;
-
+/// Resolve targets and write skill files, returning the per-agent results
+/// without printing — so the caller decides the output format (one combined
+/// JSON document, or human-readable).
+fn collect_install(opts: &InstallOpts<'_>, home: &Path) -> Result<Vec<SkillResult>> {
     let targets = resolve_targets(opts)?;
     if targets.is_empty() {
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     let mut results: Vec<SkillResult> = targets
         .iter()
-        .map(|&a| install_for_agent(a, &home, opts.force, opts.dry_run))
+        .map(|&a| install_for_agent(a, home, opts.force, opts.dry_run))
         .collect();
 
     // Also report undetected agents when not targeting a specific one.
@@ -85,13 +103,7 @@ fn install(opts: &InstallOpts<'_>) -> Result<()> {
         }
     }
 
-    if opts.json_output {
-        print_results_json(&results)?;
-    } else {
-        print_results_human(&results, opts.dry_run, &home);
-    }
-
-    Ok(())
+    Ok(results)
 }
 
 fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
@@ -111,28 +123,15 @@ fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
         return Ok(KNOWN_AGENTS.to_vec());
     }
 
-    let detected: Vec<&str> = KNOWN_AGENTS
+    Ok(KNOWN_AGENTS
         .iter()
         .filter(|a| is_agent_detected(a))
         .copied()
-        .collect();
-
-    if detected.is_empty() {
-        if opts.json_output {
-            println!("[]");
-        } else {
-            println!("No supported agents detected.");
-            println!("Install one of: Claude Code, Codex, Cursor, Gemini CLI, or OpenCode.");
-            println!("Or specify an agent directly: schedx setup --agent claude");
-            println!("Or install for all supported agents: schedx setup --all");
-        }
-    }
-
-    Ok(detected)
+        .collect())
 }
 
-fn print_results_json(results: &[SkillResult]) -> Result<()> {
-    let json: Vec<_> = results
+fn skill_results_json(results: &[SkillResult]) -> Vec<serde_json::Value> {
+    results
         .iter()
         .map(|r| {
             serde_json::json!({
@@ -141,8 +140,14 @@ fn print_results_json(results: &[SkillResult]) -> Result<()> {
                 "status": r.status,
             })
         })
-        .collect();
-    println!("{}", serde_json::to_string_pretty(&json)?);
+        .collect()
+}
+
+fn print_results_json(results: &[SkillResult]) -> Result<()> {
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&skill_results_json(results))?
+    );
     Ok(())
 }
 

@@ -161,6 +161,37 @@ fn setup_all_installs_every_supported_agent() {
 }
 
 #[test]
+fn setup_json_is_a_single_document() {
+    // `--json` must emit exactly ONE JSON document so it is parseable by jq /
+    // serde. (It used to print the skills array and then a separate agents
+    // object — two concatenated top-level values that broke every consumer.)
+    let env = TestEnv::new();
+    let home = env.home();
+    let cwd = tempfile::tempdir().expect("failed to make cwd");
+
+    let output = env
+        .cmd()
+        .env("HOME", &home)
+        .current_dir(cwd.path())
+        .args(["setup", "--agent", "codex", "--json"])
+        .output()
+        .expect("failed to run setup --json");
+
+    // serde_json::from_slice rejects trailing data, so a clean parse is proof
+    // the output is a single document — it would fail on two concatenated ones.
+    let doc: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .expect("setup --json must be exactly one JSON document");
+    assert!(
+        doc.get("skills").and_then(|s| s.as_array()).is_some(),
+        "the combined document must carry a skills array"
+    );
+    assert!(
+        doc.get("agents").is_some(),
+        "the combined document must fold in the agent detection"
+    );
+}
+
+#[test]
 fn setup_list_reports_installed_version() {
     let env = TestEnv::new();
     let home = env.home();
