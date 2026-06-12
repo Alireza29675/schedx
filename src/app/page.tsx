@@ -42,6 +42,9 @@ export default function Home() {
           </div>
           <div className="hero-right">
             <AgentChat />
+            <a className="hero-skill-tie" href="#install" data-umami-event="click-skill-tie">
+              Give your agent this skill →
+            </a>
           </div>
         </div>
       </header>
@@ -268,7 +271,7 @@ export default function Home() {
       </section>
 
       {/* Footer / Install */}
-      <section className="footer-section">
+      <section className="footer-section" id="install">
         <div className="cta-group">
           <div className="install-box">
             <code>curl -sL schedx.run/get | bash</code>
@@ -279,6 +282,11 @@ export default function Home() {
             <code>cargo install schedx --locked</code>
             <CopyButton text="cargo install schedx --locked" umamiEvent="copy-cargo-install" />
             <span>[Rust]</span>
+          </div>
+          <div className="install-box">
+            <code>npx skills add Alireza29675/schedx</code>
+            <CopyButton text="npx skills add Alireza29675/schedx" umamiEvent="copy-skill-install" />
+            <span>[Agents]</span>
           </div>
           <div className="footer-meta">
             MIT Licensed. Written in Rust. State is plain files. No daemon, no cloud.
