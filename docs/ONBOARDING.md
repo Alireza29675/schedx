@@ -48,6 +48,7 @@ src/
   cli.rs                Clap command definitions
   commands/             User-facing command handlers
   engine/               Runtime behavior: dispatch, execute, locking, logging
+  manifest/             Declarative schedx.yaml: parse, ${VAR} expand, plan, state
   model/                Serializable domain types
   schedule/             Schedule parsing and next-run computation
   store/                Filesystem persistence and atomic writes
@@ -225,6 +226,7 @@ By default:
   jobs.json
   config.json
   run-history.jsonl
+  manifests/
   backups/
   logs/
   locks/
@@ -237,6 +239,7 @@ That directory layout is defined in [`src/store/paths.rs`](../src/store/paths.rs
 - `jobs.json`: authoritative job definitions and inline last-run summary
 - `config.json`: agents, timeouts, backend settings
 - `run-history.jsonl`: append-only run ledger
+- `manifests/<name>.json`: what each declarative manifest (`schedx up`) last applied
 - `logs/<job-id>/<run-id>.log`: raw run output
 - `backups/*.json`: rotating state backups
 - `locks/*.lock`: file locks for state, dispatch, and job overlap
@@ -385,6 +388,25 @@ If you contribute here, keep these decisions in mind:
 - then inspect `state.rs`, `history.rs`, `backup.rs`, `atomic.rs`
 - think about migration and backward compatibility before changing schemas
 
+### Change declarative manifest behavior (schedx.yaml)
+
+- the pipeline is `parse → expand → plan → apply`:
+  [`src/manifest/parse.rs`](../src/manifest/parse.rs) (yaml shape;
+  unknown keys are rejected), [`src/manifest/env.rs`](../src/manifest/env.rs)
+  (`${VAR}` expansion), [`src/manifest/plan.rs`](../src/manifest/plan.rs)
+  (the PURE reconcile — the create/update/prune/drift table lives here, with
+  a unit test per row)
+- [`src/manifest/state.rs`](../src/manifest/state.rs) records what a manifest
+  applied (`~/.schedx/manifests/<name>.json`) and recovers ownership from job
+  markers when the state file is lost
+- [`src/commands/up.rs`](../src/commands/up.rs) and
+  [`src/commands/down.rs`](../src/commands/down.rs) stay thin: lock first,
+  then read + plan + apply in one atomic state write
+- schedule validation happens at PLAN time, not parse time, so every problem
+  reports together and any error means nothing is applied
+- tests: [`tests/cli_up.rs`](../tests/cli_up.rs) and
+  [`tests/cli_down.rs`](../tests/cli_down.rs) — CLI-first like everything else
+
 ## 15. Suggested Reading Order for Contributors
 
 If you have 15 minutes:
@@ -402,7 +424,8 @@ If you have 45 minutes:
 2. `src/store/*`
 3. `src/model/*`
 4. `src/schedule/parser.rs`
-5. `tests/*`
+5. `src/manifest/plan.rs` (the declarative reconcile — pure and heavily unit-tested)
+6. `tests/*`
 
 If you plan to change runtime behavior:
 
