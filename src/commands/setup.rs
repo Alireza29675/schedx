@@ -7,12 +7,10 @@ use anyhow::{Result, bail};
 /// Version embedded in installed skill files for tracking.
 const SKILL_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// Skill content embedded at compile time.
-const SKILL_MD: &str = include_str!("../../skills/SKILL.md");
-const REFERENCE_MD: &str = include_str!("../../skills/reference.md");
-const CURSOR_MDC: &str = include_str!("../../skills/cursor.mdc");
-const GEMINI_MD: &str = include_str!("../../skills/gemini.md");
-const OPENCODE_MD: &str = include_str!("../../skills/opencode.md");
+// The one canonical skill, embedded at compile time. Every agent gets the same
+// SKILL.md + reference.md — the converged 2026 format they all read natively.
+const SKILL_MD: &str = include_str!("../../skills/schedx/SKILL.md");
+const REFERENCE_MD: &str = include_str!("../../skills/schedx/reference.md");
 
 /// The five known agent targets for skill installation.
 const KNOWN_AGENTS: &[&str] = &["claude", "codex", "cursor", "gemini", "opencode"];
@@ -88,7 +86,7 @@ fn install(opts: &InstallOpts<'_>) -> Result<()> {
     }
 
     if opts.json_output {
-        print_results_json(&results, &home)?;
+        print_results_json(&results)?;
     } else {
         print_results_human(&results, opts.dry_run, &home);
     }
@@ -126,19 +124,15 @@ fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
     Ok(detected)
 }
 
-fn print_results_json(results: &[SkillResult], home: &Path) -> Result<()> {
+fn print_results_json(results: &[SkillResult]) -> Result<()> {
     let json: Vec<_> = results
         .iter()
         .map(|r| {
-            let mut obj = serde_json::json!({
+            serde_json::json!({
                 "agent": r.agent,
                 "path": r.path,
                 "status": r.status,
-            });
-            if r.agent == "claude" {
-                obj["plugin_installed"] = serde_json::json!(is_claude_plugin_installed(home));
-            }
-            obj
+            })
         })
         .collect();
     println!("{}", serde_json::to_string_pretty(&json)?);
@@ -225,7 +219,10 @@ fn install_for_agent(agent: &str, home: &Path, force: bool, dry_run: bool) -> Sk
 
     for (filename, content) in &target_files {
         let path = target_dir.join(filename);
-        let versioned = format!("<!-- schedx-skill v{SKILL_VERSION} -->\n{content}");
+        // Append (don't prepend) the version marker: SKILL.md leads with YAML
+        // frontmatter that the native skill format requires at the very top, so
+        // a comment before it would hide the skill's name/description.
+        let versioned = format!("{content}\n<!-- schedx-skill v{SKILL_VERSION} -->\n");
         if let Err(e) = fs::write(&path, versioned) {
             return SkillResult {
                 agent: agent.to_string(),
@@ -243,27 +240,25 @@ fn install_for_agent(agent: &str, home: &Path, force: bool, dry_run: bool) -> Sk
 }
 
 /// Return `(files_to_write, target_directory)` for each agent.
+/// Where each agent reads a native `SKILL.md` skill folder, as of 2026.
+///
+/// The landscape converged on one Anthropic-style `SKILL.md` directory:
+/// - Claude Code reads `~/.claude/skills/`.
+/// - Codex, Gemini CLI, and opencode all read the shared `~/.agents/skills/`
+///   path (Gemini gives it precedence over `~/.gemini/skills/`).
+/// - Cursor has no global skills dir; it reads `.cursor/skills/` per project,
+///   so we install into the current working directory.
+///
+/// Every target gets the same two files — no per-agent variants to drift.
 fn skill_target(agent: &str, home: &Path) -> (Vec<(&'static str, &'static str)>, PathBuf) {
-    match agent {
-        "claude" => (
-            vec![("SKILL.md", SKILL_MD), ("reference.md", REFERENCE_MD)],
-            home.join(".claude/skills/schedx"),
-        ),
-        "codex" => (
-            vec![("SKILL.md", SKILL_MD), ("reference.md", REFERENCE_MD)],
-            home.join(".agents/skills/schedx"),
-        ),
-        "cursor" => (vec![("schedx.mdc", CURSOR_MDC)], home.join(".cursor/rules")),
-        "gemini" => (
-            vec![("schedx.md", GEMINI_MD)],
-            home.join(".gemini/instructions"),
-        ),
-        "opencode" => (
-            vec![("schedx.md", OPENCODE_MD)],
-            home.join(".config/opencode/instructions"),
-        ),
-        _ => (vec![], home.to_path_buf()),
-    }
+    let files = vec![("SKILL.md", SKILL_MD), ("reference.md", REFERENCE_MD)];
+    let dir = match agent {
+        "claude" => home.join(".claude/skills/schedx"),
+        "codex" | "gemini" | "opencode" => home.join(".agents/skills/schedx"),
+        "cursor" => PathBuf::from(".cursor/skills/schedx"),
+        _ => return (vec![], home.to_path_buf()),
+    };
+    (files, dir)
 }
 
 /// Check if an agent binary is available on `PATH`.
@@ -289,21 +284,6 @@ fn cursor_detected() -> bool {
         .is_ok_and(|o| o.status.success())
 }
 
-/// Check whether the schedx Claude Code plugin is registered in the plugin registry.
-fn is_claude_plugin_installed(home: &Path) -> bool {
-    let json_path = home.join(".claude/plugins/installed_plugins.json");
-    let Ok(content) = fs::read_to_string(&json_path) else {
-        return false;
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
-        return false;
-    };
-    value
-        .get("plugins")
-        .and_then(|v| v.as_object())
-        .is_some_and(|plugins| plugins.keys().any(|k| k.starts_with("schedx")))
-}
-
 fn display_path(path: &Path, home: &Path) -> String {
     if let Ok(rel) = path.strip_prefix(home) {
         format!("~/{}", rel.display())
@@ -312,33 +292,19 @@ fn display_path(path: &Path, home: &Path) -> String {
     }
 }
 
-fn print_post_install_note(agent: &str, path: Option<&str>, home: &Path) {
-    match agent {
-        "claude" => {
-            if !is_claude_plugin_installed(home) {
-                println!();
-                println!("Note for Claude Code:");
-                println!("  The schedx plugin is not installed.");
-                println!(
-                    "  Run `/plugin install schedx` in Claude Code for auto-install on session start."
-                );
-            }
-        }
-        "gemini" => {
+fn print_post_install_note(agent: &str, path: Option<&str>, _home: &Path) {
+    // Claude, Codex, Gemini CLI, and opencode all auto-discover the native
+    // SKILL.md from their skills directory — no config edit, no note needed.
+    // Cursor is the exception: it has no global skills dir, so the skill lands
+    // in the current project and must be installed per project.
+    if agent == "cursor" {
+        if let Some(p) = path {
             println!();
-            println!("Note for Gemini CLI:");
-            println!("  Add to ~/.gemini/GEMINI.md:");
-            println!("    See ~/.gemini/instructions/schedx.md for schedx usage.");
+            println!("Note for Cursor:");
+            println!("  Installed into this project at {p}.");
+            println!("  Cursor reads skills per project — run `schedx setup --agent cursor`");
+            println!("  in each project where you want schedx available.");
         }
-        "opencode" => {
-            if let Some(p) = path {
-                println!();
-                println!("Note for OpenCode:");
-                println!("  Add to your opencode.json instructions array:");
-                println!("    \"instructions\": [\"{p}\"]");
-            }
-        }
-        _ => {}
     }
 }
 
@@ -358,7 +324,7 @@ fn list_skills(json_output: bool) -> Result<()> {
         if primary.exists() {
             let version = read_skill_version(&primary);
             let outdated = version.as_deref() != Some(SKILL_VERSION);
-            let mut status = if outdated {
+            let status = if outdated {
                 format!(
                     "installed (v{}, current: v{SKILL_VERSION})",
                     version.as_deref().unwrap_or("unknown")
@@ -366,14 +332,6 @@ fn list_skills(json_output: bool) -> Result<()> {
             } else {
                 format!("installed (v{SKILL_VERSION})")
             };
-            if agent == "claude" {
-                let plugin_tag = if is_claude_plugin_installed(&home) {
-                    " | plugin: installed"
-                } else {
-                    " | plugin: not installed"
-                };
-                status.push_str(plugin_tag);
-            }
             entries.push(SkillResult {
                 agent: agent.to_string(),
                 path: Some(display_path(&primary, &home)),
@@ -389,7 +347,7 @@ fn list_skills(json_output: bool) -> Result<()> {
     }
 
     if json_output {
-        print_results_json(&entries, &home)?;
+        print_results_json(&entries)?;
     } else {
         println!("{:<12} {:<40} Path", "Agent", "Status");
         for r in &entries {
