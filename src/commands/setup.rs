@@ -105,19 +105,26 @@ fn resolve_targets<'a>(opts: &InstallOpts<'a>) -> Result<Vec<&'a str>> {
         return Ok(vec![name]);
     }
 
+    // --all installs for every supported agent, detected or not (so you can
+    // pre-seed agents you haven't installed yet).
+    if opts.all {
+        return Ok(KNOWN_AGENTS.to_vec());
+    }
+
     let detected: Vec<&str> = KNOWN_AGENTS
         .iter()
         .filter(|a| is_agent_detected(a))
         .copied()
         .collect();
 
-    if detected.is_empty() && !opts.all {
+    if detected.is_empty() {
         if opts.json_output {
             println!("[]");
         } else {
             println!("No supported agents detected.");
             println!("Install one of: Claude Code, Codex, Cursor, Gemini CLI, or OpenCode.");
             println!("Or specify an agent directly: schedx setup --agent claude");
+            println!("Or install for all supported agents: schedx setup --all");
         }
     }
 
@@ -255,7 +262,11 @@ fn skill_target(agent: &str, home: &Path) -> (Vec<(&'static str, &'static str)>,
     let dir = match agent {
         "claude" => home.join(".claude/skills/schedx"),
         "codex" | "gemini" | "opencode" => home.join(".agents/skills/schedx"),
-        "cursor" => PathBuf::from(".cursor/skills/schedx"),
+        // Cursor reads skills per project — install into the current directory,
+        // resolved to an absolute path so the report shows where it landed.
+        "cursor" => std::env::current_dir()
+            .unwrap_or_default()
+            .join(".cursor/skills/schedx"),
         _ => return (vec![], home.to_path_buf()),
     };
     (files, dir)

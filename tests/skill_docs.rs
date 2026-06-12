@@ -130,6 +130,37 @@ fn setup_installs_skill_with_frontmatter_at_byte_zero() {
 }
 
 #[test]
+fn setup_all_installs_every_supported_agent() {
+    // `--all` must install for every supported agent, detected or not — the
+    // docs promise it and the flag name implies it. Cursor installs into the
+    // current directory, so run from an isolated CWD to avoid polluting.
+    let env = TestEnv::new();
+    let home = env.home();
+    let cwd = tempfile::tempdir().expect("failed to make cwd");
+
+    env.cmd()
+        .env("HOME", &home)
+        .current_dir(cwd.path())
+        .args(["setup", "--all"])
+        .assert()
+        .success();
+
+    // Claude → ~/.claude, the shared trio → ~/.agents, cursor → project CWD.
+    assert!(
+        home.join(".claude/skills/schedx/SKILL.md").exists(),
+        "claude skill missing"
+    );
+    assert!(
+        home.join(".agents/skills/schedx/SKILL.md").exists(),
+        "shared agents skill missing"
+    );
+    assert!(
+        cwd.path().join(".cursor/skills/schedx/SKILL.md").exists(),
+        "cursor skill should land in the current project dir"
+    );
+}
+
+#[test]
 fn setup_list_reports_installed_version() {
     let env = TestEnv::new();
     let home = env.home();

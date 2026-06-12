@@ -253,7 +253,7 @@ pub enum Commands {
         #[arg(long)]
         agent: Option<String>,
 
-        /// Install for all detected agents without prompting
+        /// Install for all supported agents, not just detected ones
         #[arg(long)]
         all: bool,
 
