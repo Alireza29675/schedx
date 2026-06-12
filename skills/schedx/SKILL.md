@@ -1,3 +1,11 @@
+---
+name: schedx
+description: >
+  Schedule recurring jobs, AI agent prompts, and webhooks from the CLI using schedx.
+  Use when the user wants to schedule, automate, or run something on a timer — cron jobs,
+  periodic prompts, webhook calls, one-shot delayed tasks, or checking on scheduled work.
+---
+
 # schedx — Scheduler CLI
 
 schedx is a local-first scheduler that runs shell commands, AI agent prompts, and
@@ -52,11 +60,54 @@ schedx rm <id|name> [--force]                     # Remove
 schedx logs <id|name> [--run <run-id>]            # View output
 schedx history [id|name] [--limit N] [--json]     # Run history
 schedx agent add <name> --bin <path> [--arg X]... # Register agent
+schedx agent rm <name>                            # Remove agent
 schedx agent list [--json]                        # List agents
 schedx agent default <name>                       # Set default agent
 schedx config [key] [value]                       # Read/set config
 schedx repair [--json]                            # Fix inconsistencies
+schedx upgrade [--force]                          # Update schedx
+schedx up [--dry-run] [--force]                   # Apply a schedx.yaml manifest
+schedx down                                       # Remove what a manifest created
 ```
+
+## Declarative Manifests (`schedx.yaml`)
+
+Instead of adding jobs one at a time, declare them all in a `schedx.yaml` and
+reconcile with one command — useful once there is more than a handful of jobs.
+
+```yaml
+name: my-jobs
+jobs:
+  backup:
+    schedule: "every 6h"
+    run: "restic backup ~/"
+  morning-brief:
+    schedule: "0 9 * * 1-5"
+    prompt: "Summarize my unread PRs"
+  slack-ping:
+    schedule: "every 15m"
+    webhook: "https://hooks.slack.com/T/B/X"
+    headers:
+      Authorization: "Bearer ${SLACK_TOKEN}"
+```
+
+```bash
+schedx up --dry-run   # preview the changes
+schedx up             # make the job store match the file (idempotent)
+schedx down           # remove every job the manifest created
+```
+
+`up` creates new jobs, updates changed ones in place, corrects drift, and prunes
+jobs deleted from the file. It never touches jobs added with `schedx add`.
+`${VAR}` expands from the environment, keeping secrets out of the file.
+
+**The file is the source of truth.** A manifest job is *managed*: change it by editing
+the file then running `schedx up` — not `schedx edit`/`schedx rm` (the next `up` reverts
+that drift). Add a job the same way: put it in the file, then `up`. `schedx add` makes an
+*unmanaged* one-off the manifest won't track, and there's no command to import it back —
+so working declaratively means keeping every new or changed job *in the file*. The loop:
+edit → `schedx up --dry-run` (preview) → `schedx up` (apply); `schedx down` tears the
+managed jobs down. See REFERENCE for `--file`, `down --manifest`, and new-machine setup.
 
 ## Key Behaviors
 
@@ -64,6 +115,7 @@ schedx repair [--json]                            # Fix inconsistencies
 - **HTTPS required for webhooks.** HTTP needs `schedx config allow_insecure_http true`.
 - **Overlap forbidden by default.** Concurrent runs of the same job are prevented.
 - **One-shot jobs auto-complete.** They transition to `completed` after execution.
+- **Auto-archive.** Completed one-shot jobs are archived after 48h (configurable).
 - **Secrets are redacted.** Authorization headers and tokens are masked in output.
 - **Default timeout: 300s.** Override per-job with `--timeout` or globally via config.
 - **Data directory:** `~/.schedx/` (override with `SCHEDX_HOME`).
@@ -74,8 +126,8 @@ schedx repair [--json]                            # Fix inconsistencies
 
 ## Full Reference
 
-For all flags, configuration keys, and detailed examples:
+For all flags, configuration keys, and detailed examples, check the latest reference:
 https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md
 
-Real-world recipes:
+Real-world recipes (DevOps, AI workflows, webhooks, monitoring):
 https://github.com/Alireza29675/schedx/blob/main/docs/EXAMPLES.md

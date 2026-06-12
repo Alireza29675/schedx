@@ -15,8 +15,8 @@
 - [Agent Integration](https://github.com/Alireza29675/schedx/blob/main/docs/REFERENCE.md#agent-integration): Setting up AI agents for --prompt jobs
 
 ## Agent Skills
-- [SKILL.md](https://github.com/Alireza29675/schedx/blob/main/skills/SKILL.md): Agent Skills standard file (Claude Code, Codex, Copilot, VS Code)
-- [Skills README](https://github.com/Alireza29675/schedx/blob/main/skills/README.md): Installation guide for all agent platforms
+- [SKILL.md](https://github.com/Alireza29675/schedx/blob/main/skills/schedx/SKILL.md): The canonical agent skill, read natively by Claude Code, Codex, Gemini CLI, Cursor, and opencode
+- [Skills README](https://github.com/Alireza29675/schedx/blob/main/skills/README.md): Install via `npx skills add Alireza29675/schedx` or `schedx setup`
 
 ## Optional
 - [Security](https://github.com/Alireza29675/schedx/blob/main/SECURITY.md): Security policy and vulnerability reporting

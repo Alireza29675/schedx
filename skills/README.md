@@ -1,77 +1,52 @@
 # schedx Agent Skills
 
-Skill files that teach AI coding agents how to use schedx.
+One canonical skill — [`schedx/SKILL.md`](schedx/SKILL.md) plus its
+[`reference.md`](schedx/reference.md) — that teaches AI coding agents how to
+drive schedx. As of 2026 the landscape converged on the Anthropic-style
+`SKILL.md` folder, so the same skill is read natively by **Claude Code, Codex,
+Gemini CLI, Cursor, and opencode**. No per-agent variants.
 
-## Automatic installation
-
-```bash
-schedx setup                  # Interactive — detects and installs for found agents
-schedx setup --all            # Install for all detected agents
-schedx setup --agent claude   # Install for a specific agent
-schedx setup --list           # Check installed skills and versions
-```
-
-## Manual installation
-
-### Claude Code
+## Install
 
 ```bash
-mkdir -p ~/.claude/skills/schedx
-cp skills/SKILL.md ~/.claude/skills/schedx/SKILL.md
-cp skills/reference.md ~/.claude/skills/schedx/reference.md
+# Cross-agent one-liner (vercel-labs/skills, no schedx needed for this step):
+npx skills add Alireza29675/schedx              # every detected agent
+npx skills add Alireza29675/schedx -a claude-code   # one agent
+#   agent ids: claude-code · codex · cursor · gemini-cli · opencode
+
+# From the binary — no Node, offline, version-matched to your schedx:
+schedx setup            # detect your agents and install for each
+schedx setup --all      # install for every supported agent
+schedx setup --list     # show what's installed and its version
 ```
 
-### Codex (OpenAI)
+Both paths write the **same** skill — there is nothing to copy by hand.
 
-```bash
-mkdir -p ~/.agents/skills/schedx
-cp skills/SKILL.md ~/.agents/skills/schedx/SKILL.md
-cp skills/reference.md ~/.agents/skills/schedx/reference.md
-```
+## Where it lands
 
-### Cursor
+| Agent | Path |
+|-------|------|
+| Claude Code | `~/.claude/skills/schedx/` |
+| Codex, Gemini CLI, opencode | `~/.agents/skills/schedx/` (the shared skills path they all read) |
+| Cursor | `.cursor/skills/schedx/` in the current project (Cursor reads skills per project, so run it inside each repo) |
 
-```bash
-cp skills/cursor.mdc ~/.cursor/rules/schedx.mdc
-```
+`schedx setup` stamps each installed file with the schedx version, so the skill
+can never drift from the binary. Run `schedx setup --force` after upgrading to
+refresh.
 
-### Gemini CLI
-
-```bash
-mkdir -p ~/.gemini/instructions
-cp skills/gemini.md ~/.gemini/instructions/schedx.md
-```
-
-Then add to your `~/.gemini/GEMINI.md`:
-```
-See ~/.gemini/instructions/schedx.md for schedx scheduler CLI usage.
-```
-
-### OpenCode
-
-```bash
-mkdir -p ~/.config/opencode/instructions
-cp skills/opencode.md ~/.config/opencode/instructions/schedx.md
-```
-
-Then add to your `~/.config/opencode/opencode.json` instructions array:
-```json
-{
-  "instructions": ["~/.config/opencode/instructions/schedx.md"]
-}
-```
+> Gemini CLI support is verified against Google's published Gemini CLI skills
+> docs (which give `~/.agents/skills/` precedence), not a live binary run.
 
 ## Project-level AGENTS.md
 
-To add schedx awareness to a specific project, copy the snippet from [AGENTS-snippet.md](AGENTS-snippet.md) into your project's `AGENTS.md` file.
+To add schedx awareness to a single project without installing a skill, copy the
+snippet from [AGENTS-snippet.md](AGENTS-snippet.md) into your project's
+`AGENTS.md`.
 
 ## Files
 
-| File | Format | For |
-|------|--------|-----|
-| `SKILL.md` | Agent Skills standard | Claude Code, Codex, GitHub Copilot, VS Code |
-| `reference.md` | Supporting reference | Loaded on-demand by SKILL.md |
-| `cursor.mdc` | Cursor MDC | Cursor |
-| `gemini.md` | Plain markdown | Gemini CLI |
-| `opencode.md` | Plain markdown | OpenCode |
-| `AGENTS-snippet.md` | Copy-paste snippet | Any agent via project AGENTS.md |
+| File | Purpose |
+|------|---------|
+| `schedx/SKILL.md` | The canonical skill — frontmatter + quick command grammar |
+| `schedx/reference.md` | Full command/flag reference, loaded on demand by the skill |
+| `AGENTS-snippet.md` | Copy-paste snippet for a project's `AGENTS.md` |

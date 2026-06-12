@@ -600,6 +600,38 @@ schedx daemon [--interval <secs>]
 |------|---------|-------------|
 | `--interval <secs>` | 10 | Dispatch tick interval in seconds |
 
+---
+
+### `schedx setup`
+
+Install the schedx agent skill into your AI coding agents. The skill is embedded
+in the binary and stamped with the current version, so it never drifts from the
+schedx you have installed.
+
+```
+schedx setup [--agent <name>] [--all] [--force] [--dry-run] [--list]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent <name>` | Install for one agent: `claude`, `codex`, `cursor`, `gemini`, `opencode` |
+| `--all` | Install for every supported agent, not just detected ones |
+| `--force` | Overwrite an existing skill even if it is already current |
+| `--dry-run` | Show what would be installed without writing files |
+| `--list` | Show installed skills and their versions |
+
+With no flags it detects the agents on your machine and installs for each.
+Install paths:
+
+| Agent | Path |
+|-------|------|
+| Claude Code | `~/.claude/skills/schedx/` |
+| Codex, Gemini CLI, opencode | `~/.agents/skills/schedx/` (the shared skills path they all read) |
+| Cursor | `.cursor/skills/schedx/` in the current project (Cursor reads skills per project) |
+
+For a one-line cross-agent install without schedx itself, see
+[Agent Integration](#agent-integration).
+
 ## Declarative Manifests (schedx.yaml)
 
 Declare all your schedules in one file, then `schedx up` to make the job store match it and `schedx down` to remove everything it created — think docker-compose for schedules.
@@ -685,6 +717,29 @@ A completed one-shot with an unchanged spec stays completed (`up` never re-fires
 - The whole reconcile lands in one atomic `jobs.json` write — there is no partially-applied state to recover from.
 
 ## Agent Integration
+
+### Teaching your agent to use schedx (the skill)
+
+schedx ships a `SKILL.md` that teaches AI coding agents how to drive it. One
+canonical skill (`skills/schedx/`) is read natively by Claude Code, Codex,
+Gemini CLI, Cursor, and opencode.
+
+```bash
+# Cross-agent, no schedx required for the install step:
+npx skills add Alireza29675/schedx              # all detected agents
+npx skills add Alireza29675/schedx -a codex     # one agent
+
+# From the binary (no Node, version-matched, offline):
+schedx setup            # detect and install
+schedx setup --list     # what's installed
+```
+
+Both write the same skill. See [`schedx setup`](#schedx-setup) for the per-agent
+install paths. (Gemini CLI support is verified against Google's published skills
+docs, which route the skill via the shared `~/.agents/skills/` path.)
+
+This is separate from registering an agent for `--prompt` jobs, below — the
+skill teaches an agent to *call* schedx; a profile lets schedx *call* an agent.
 
 ### Registering agents
 

@@ -357,6 +357,131 @@ schedx daemon [--interval <secs>]
 
 Default interval: 10 seconds.
 
+---
+
+### `schedx up` / `schedx down`
+
+Reconcile jobs from a declarative `schedx.yaml` manifest. See
+[Declarative Manifests](#declarative-manifests-schedxyaml) for the file format.
+
+```
+schedx up   [--file <path>] [--dry-run] [--force]
+schedx down [--file <path>] [--manifest <name>] [--dry-run] [--force]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--file <path>` | Manifest path (default `schedx.yaml`) |
+| `--manifest <name>` | (`down` only) Target a manifest by name — works after the file is gone |
+| `--dry-run` | Print the plan without applying it |
+| `--force` | Accept a moved manifest file (skips the recorded-path check) |
+
+`up` makes the job store match the file: it creates new jobs, updates changed
+ones in place (history preserved), corrects drift, and prunes jobs removed from
+the file. Running `up` twice is a no-op. Jobs added with `schedx add` are never
+touched. `down` removes every job the manifest created — and via the recorded
+per-manifest state, `down --manifest <name>` still works after the file is
+deleted.
+
+---
+
+### `schedx setup`
+
+Install the schedx skill into your AI coding agents so they know how to drive
+schedx. The skill is embedded in the binary and version-stamped, so it never
+drifts from your installed schedx.
+
+```
+schedx setup [--agent <name>] [--all] [--force] [--dry-run] [--list]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--agent <name>` | Install for one agent: `claude`, `codex`, `cursor`, `gemini`, `opencode` |
+| `--all` | Install for every supported agent (not just detected ones) |
+| `--force` | Overwrite an existing skill even if up to date |
+| `--dry-run` | Show what would be installed without writing files |
+| `--list` | Show installed skills and their versions |
+
+With no flags, `schedx setup` detects the agents on your machine and installs
+for each. Install paths: Claude Code → `~/.claude/skills/schedx/`; Codex,
+Gemini CLI, and opencode → `~/.agents/skills/schedx/` (the shared skills path
+they all read); Cursor → `.cursor/skills/schedx/` in the current project.
+
+## Declarative Manifests (`schedx.yaml`)
+
+Declare all your jobs in one file and reconcile with `schedx up`.
+
+```yaml
+name: my-jobs            # manifest name (used by up/down and state)
+jobs:
+  backup:                # the key is the job name
+    schedule: "every 6h"
+    run: "restic backup ~/"
+  morning-brief:
+    schedule: "0 9 * * 1-5"
+    prompt: "Summarize my unread PRs"
+    agent: claude        # optional, for prompt jobs
+  slack-ping:
+    schedule: "every 15m"
+    webhook: "https://hooks.slack.com/services/T/B/X"
+    method: POST         # optional, defaults to POST
+    headers:
+      Authorization: "Bearer ${SLACK_TOKEN}"
+    body: '{"text":"ping"}'
+  cleanup:
+    schedule: "0 3 * * 0"
+    run: "find /tmp -mtime +7 -delete"
+    paused: true         # optional, create the job paused
+```
+
+Each job takes exactly one action (`run`, `prompt`, or `webhook`) plus the same
+optional fields as `schedx add` (`tags`, `timeout`, `workdir`, `on_failure`, …).
+`${VAR}` references expand from the environment at apply time, so secrets stay
+out of the committed file.
+
+```bash
+schedx up --dry-run   # preview: + create / ~ update / - prune
+schedx up             # apply (idempotent — running twice changes nothing)
+schedx down           # remove every job this manifest created
+```
+
+Reconcile semantics: jobs new in the file are **created**; jobs whose fields
+changed are **updated in place** (run history kept); a changed schedule or
+action is **recreated**; jobs deleted from the file are **pruned**; jobs you
+added with `schedx add` are never managed. Version a `schedx.yaml` in a repo and
+a new machine is one `schedx up` away from your whole setup.
+
+### Working with a manifest: the file is the source of truth
+
+A job declared in a manifest is **managed** — `schedx.yaml` owns it and `up`
+reconciles the store to match the file. So the workflow is file-first:
+
+- **Change a managed job in the file, then `schedx up`.** Editing it with
+  `schedx edit` (or deleting it with `schedx rm`) is drift: the next `schedx up`
+  reverts it to what the file declares. The file wins.
+- **Add a job by adding it to the file, then `schedx up`.** `schedx add` creates an
+  **unmanaged** job — handy for a quick one-off, but the manifest neither tracks nor
+  prunes it, and it lives outside the file. There is no `--adopt`/import that pulls an
+  `add` job back into the manifest, so "keeping the file up to date" is a deliberate,
+  manual act: if you want a job to be declarative, write it in the file.
+- **Managed vs unmanaged, at a glance:** `up` and `down` only ever touch jobs the
+  manifest owns; anything created with `schedx add` is invisible to reconciliation.
+
+The everyday loop:
+
+```bash
+$EDITOR schedx.yaml      # change the desired state
+schedx up --dry-run      # preview: + create / ~ update / - prune
+schedx up                # apply
+schedx down              # tear down every job this manifest owns
+```
+
+Use `-f <path>` / `--file <path>` for a manifest that isn't `./schedx.yaml`;
+`schedx down --manifest <name>` tears a manifest down by name even after its file is
+deleted; `--force` accepts a manifest that has moved on disk (updating the recorded
+path). On a new machine, drop the versioned `schedx.yaml` in place and run `schedx up`.
+
 ## JSON Output for Scripting
 
 ```bash

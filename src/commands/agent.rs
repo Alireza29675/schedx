@@ -120,7 +120,58 @@ struct DetectResult {
     status: &'static str,
 }
 
+/// The outcome of detecting and registering agent profiles.
+struct Detection {
+    results: Vec<DetectResult>,
+    chosen_default: Option<String>,
+    existing_default: Option<String>,
+}
+
 pub fn detect_agents(force: bool, json_output: bool) -> Result<()> {
+    // The interactive default-agent prompt only makes sense for human runs.
+    let detection = run_detection(force, !json_output)?;
+    if json_output {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&detect_value(&detection)).unwrap()
+        );
+    } else {
+        print_detect_human(
+            &detection.results,
+            detection.chosen_default.as_deref(),
+            detection.existing_default.as_deref(),
+        );
+    }
+    Ok(())
+}
+
+/// Detect + register agents and return the JSON value WITHOUT printing, so a
+/// caller like `schedx setup --json` can fold it into one combined document
+/// instead of emitting a second top-level JSON object.
+pub fn detect_agents_json(force: bool) -> Result<serde_json::Value> {
+    Ok(detect_value(&run_detection(force, false)?))
+}
+
+fn detect_value(detection: &Detection) -> serde_json::Value {
+    let agents: Vec<_> = detection
+        .results
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "name": r.name,
+                "description": r.description,
+                "status": r.status,
+            })
+        })
+        .collect();
+    let default_agent = detection
+        .chosen_default
+        .as_deref()
+        .or(detection.existing_default.as_deref());
+    serde_json::json!({ "agents": agents, "default_agent": default_agent })
+}
+
+fn run_detection(force: bool, allow_prompt: bool) -> Result<Detection> {
     let cfg = config::load_config()?;
 
     let mut results: Vec<DetectResult> = Vec::new();
@@ -170,7 +221,7 @@ pub fn detect_agents(force: bool, json_output: bool) -> Result<()> {
 
     let chosen_default = if needs_default && added_names.len() == 1 {
         Some(added_names[0].to_string())
-    } else if needs_default && added_names.len() > 1 && !json_output {
+    } else if needs_default && added_names.len() > 1 && allow_prompt {
         prompt_default_agent(&added_names)
     } else {
         None
@@ -190,21 +241,11 @@ pub fn detect_agents(force: bool, json_output: bool) -> Result<()> {
         })?;
     }
 
-    if json_output {
-        print_detect_json(
-            &results,
-            chosen_default.as_deref(),
-            cfg.default_agent.as_deref(),
-        );
-    } else {
-        print_detect_human(
-            &results,
-            chosen_default.as_deref(),
-            cfg.default_agent.as_deref(),
-        );
-    }
-
-    Ok(())
+    Ok(Detection {
+        results,
+        chosen_default,
+        existing_default: cfg.default_agent,
+    })
 }
 
 fn prompt_default_agent(candidates: &[&str]) -> Option<String> {
@@ -228,29 +269,6 @@ fn prompt_default_agent(candidates: &[&str]) -> Option<String> {
     } else {
         None
     }
-}
-
-fn print_detect_json(
-    results: &[DetectResult],
-    chosen_default: Option<&str>,
-    existing_default: Option<&str>,
-) {
-    let agents: Vec<_> = results
-        .iter()
-        .map(|r| {
-            serde_json::json!({
-                "name": r.name,
-                "description": r.description,
-                "status": r.status,
-            })
-        })
-        .collect();
-    let default_agent = chosen_default.or(existing_default);
-    let output = serde_json::json!({
-        "agents": agents,
-        "default_agent": default_agent,
-    });
-    println!("{}", serde_json::to_string_pretty(&output).unwrap());
 }
 
 fn print_detect_human(
