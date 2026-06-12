@@ -1,68 +1,97 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
-interface ChatLine {
-  type: "user" | "agent" | "tool" | "gap";
-  text: string;
+type LineKind = "user" | "tool" | "result" | "agent" | "divider" | "report" | "report-warn";
+
+interface Step {
+  kind: LineKind | "idle" | "dim";
+  text?: string;
+  mode?: "type" | "stamp";
+  delayAfter: number;
 }
 
-const SCENES: ChatLine[][] = [
-  [
-    { type: "user", text: "Check security logs daily and flag anything suspicious" },
-    { type: "tool", text: `schedx add "0 9 * * *" \\\n  --prompt "Audit auth logs, open ports,\n  and failed logins. Alert if off."` },
-    { type: "agent", text: "Scheduled. I'll audit every morning at 9." },
-  ],
-  [
-    { type: "user", text: "After this deploy, check if everything is healthy" },
-    { type: "tool", text: `schedx add "in 30m" \\\n  --prompt "Hit /health, check error\n  rates. Report back."` },
-    { type: "agent", text: "Got it. I'll check back in 30 minutes." },
-  ],
-  [
-    { type: "user", text: "Every Friday, summarize what the team shipped" },
-    { type: "tool", text: `schedx add "0 17 * * 5" \\\n  --prompt "Pull merged PRs, summarize\n  the week's progress."` },
-    { type: "agent", text: "Done. Weekly digest every Friday at 5pm." },
-  ],
-  [
-    { type: "user", text: "Back up the database every 6 hours" },
-    { type: "tool", text: `schedx add "every 6h" \\\n  --run "pg_dump prod >\n  /backups/$(date +%s).sql"` },
-    { type: "agent", text: "Scheduled. Backups every 6 hours." },
-  ],
-  [
-    { type: "user", text: "Monitor our API costs and warn me if they spike" },
-    { type: "tool", text: `schedx add "0 8 * * *" \\\n  --prompt "Check API spend vs yesterday.\n  Alert if up more than 20%."` },
-    { type: "agent", text: "On it. I'll check every morning at 8." },
-  ],
+// One scenario, told once: you ask, the agent schedules, then day-stamped
+// reports keep arriving next to a cursor that never types again.
+// The ⎿ line is byte-exact output of the real binary (fixture note in
+// memory/tasks/schedx/2026-06-12-comms-revamp/TASK.md).
+const TIMELINE: Step[] = [
+  { kind: "user", text: "Check security logs every morning and flag anything suspicious", mode: "type", delayAfter: 500 },
+  { kind: "tool", text: `Bash(schedx add "0 9 * * *" --name security-audit --prompt "Audit auth logs. Flag anything off.")`, mode: "stamp", delayAfter: 700 },
+  { kind: "result", text: "Created job security-audit (cvbhlp). Next run: 13th Jun at 9:00am (in 22h and 17m)", mode: "stamp", delayAfter: 500 },
+  { kind: "agent", text: "Scheduled. I'll audit every morning at 9.", mode: "type", delayAfter: 200 },
+  { kind: "idle", delayAfter: 1500 },
+  { kind: "dim", delayAfter: 0 },
+  { kind: "divider", text: "sat 13 jun · 09:00", mode: "stamp", delayAfter: 150 },
+  { kind: "report", text: "Audit clean. 0 failed logins, no new open ports. (run cpigad)", mode: "stamp", delayAfter: 1850 },
+  { kind: "divider", text: "sun 14 jun · 09:00", mode: "stamp", delayAfter: 150 },
+  { kind: "report", text: "Clean. New open port 5432 matches your deploy. Noted.", mode: "stamp", delayAfter: 1850 },
+  { kind: "divider", text: "mon 15 jun · 09:00", mode: "stamp", delayAfter: 150 },
+  { kind: "report-warn", text: "14 failed root logins from 1 IP — flagged. Wrote audit-report.md.", mode: "stamp", delayAfter: 5000 },
 ];
 
-const CHAR_SPEED = 16;
-const SCENE_HOLD = 5000;
-const LINE_PAUSE = 300;
-const TOOL_PAUSE = 400;
+const TYPE_SPEED_USER = 38;
+const TYPE_SPEED_AGENT = 24;
+const FADE_MS = 600;
+const RESTART_GAP_MS = 1000;
+
+const ARIA_LABEL =
+  "Animated Claude Code transcript: you ask once to check security logs every morning, " +
+  "the agent schedules it with schedx, and day-stamped audit reports then arrive on " +
+  "their own next to an idle cursor.";
+
+// The conversation dims when the first report fires; reports never dim.
+const DIMMABLE: ReadonlySet<LineKind> = new Set(["user", "tool", "result", "agent"]);
+
+interface Line {
+  kind: LineKind;
+  text: string;
+  charCount: number;
+  stamped: boolean;
+}
+
+// Beat 8 (the held composite) as a static frame — every line shown, the ask
+// tail dimmed, the idle cursor present. Used verbatim for reduced-motion.
+const HELD_LINES: Line[] = TIMELINE.filter(
+  (s): s is Step & { kind: LineKind } => s.kind !== "idle" && s.kind !== "dim",
+).map((s) => ({ kind: s.kind, text: s.text ?? "", charCount: (s.text ?? "").length, stamped: true }));
 
 export function AgentChat() {
-  const [lines, setLines] = useState<
-    { type: string; text: string; charCount: number; fading: boolean }[]
-  >([]);
-  const cancelRef = useRef(false);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [dimmed, setDimmed] = useState(false);
+  const [idleVisible, setIdleVisible] = useState(false);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
-    cancelRef.current = false;
+    // Reduced motion: render the spec's held composite frame statically and
+    // never start the loop. The frame is designed to tell the whole story on
+    // its own, so this is the on-concept opt-out (WCAG 2.2.2).
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setLines(HELD_LINES);
+      setDimmed(true);
+      setIdleVisible(true);
+      return;
+    }
+
+    // Cancellation is per effect instance: a strict-mode remount must not be
+    // able to revive the previous instance's loop (a shared ref reset would).
+    let cancelled = false;
+    // A cancelled sleep never resolves — its suspended async frame is GC'd,
+    // so the loop simply stops at the next await. No post-cancel state writes,
+    // and no leaked timers (every pending id is cleared on teardown).
+    const pending = new Set<ReturnType<typeof setTimeout>>();
     const sleep = (ms: number) =>
-      new Promise<void>((r) => {
-        const id = setTimeout(r, ms);
-        const check = setInterval(() => {
-          if (cancelRef.current) { clearTimeout(id); clearInterval(check); r(); }
-        }, 50);
+      new Promise<void>((resolve) => {
+        const id = setTimeout(() => {
+          pending.delete(id);
+          resolve();
+        }, ms);
+        pending.add(id);
       });
 
-    async function typeLine(type: string, text: string) {
-      if (cancelRef.current) return;
-      setLines((prev) => [...prev, { type, text, charCount: 0, fading: false }]);
-
-      const speed = type === "tool" ? CHAR_SPEED * 0.4 : CHAR_SPEED;
+    async function typeLine(kind: LineKind, text: string, speed: number) {
+      setLines((prev) => [...prev, { kind, text, charCount: 0, stamped: false }]);
       for (let c = 1; c <= text.length; c++) {
-        if (cancelRef.current) return;
         await sleep(speed);
         setLines((prev) => {
           const next = [...prev];
@@ -72,48 +101,61 @@ export function AgentChat() {
       }
     }
 
-    async function fadeAndClear() {
-      if (cancelRef.current) return;
-      setLines((prev) => prev.map((l) => ({ ...l, fading: true })));
-      await sleep(600);
-      if (!cancelRef.current) setLines([]);
+    function stampLine(kind: LineKind, text: string) {
+      setLines((prev) => [...prev, { kind, text, charCount: text.length, stamped: true }]);
     }
 
     async function run() {
-      let i = 0;
-      while (!cancelRef.current) {
-        const scene = SCENES[i % SCENES.length];
-
-        // User message
-        await typeLine("user", scene[0].text);
-        await sleep(LINE_PAUSE);
-
-        // Tool use
-        await sleep(TOOL_PAUSE);
-        await typeLine("tool", scene[1].text);
-        await sleep(LINE_PAUSE);
-
-        // Agent confirmation
-        await typeLine("agent", scene[2].text);
-
-        // Hold the completed scene
-        await sleep(SCENE_HOLD);
-
-        // Fade out
-        await fadeAndClear();
-        await sleep(400);
-
-        i++;
+      // Clear any residue a torn-down predecessor instance left behind.
+      setLines([]);
+      setDimmed(false);
+      setIdleVisible(false);
+      setFading(false);
+      while (!cancelled) {
+        for (const step of TIMELINE) {
+          if (step.kind === "idle") {
+            setIdleVisible(true);
+          } else if (step.kind === "dim") {
+            setDimmed(true);
+          } else if (step.mode === "type") {
+            const speed = step.kind === "user" ? TYPE_SPEED_USER : TYPE_SPEED_AGENT;
+            await typeLine(step.kind, step.text ?? "", speed);
+          } else {
+            stampLine(step.kind, step.text ?? "");
+          }
+          await sleep(step.delayAfter);
+        }
+        // Loop seam: the body alone fades; the header persists, so the pane
+        // reads as one continuous device rather than a restarting GIF.
+        setFading(true);
+        await sleep(FADE_MS);
+        setLines([]);
+        setDimmed(false);
+        setIdleVisible(false);
+        setFading(false);
+        await sleep(RESTART_GAP_MS);
       }
     }
 
-    run();
-    return () => { cancelRef.current = true; };
+    // The loop is the whole pane; a stray throw should cost one cycle, not the
+    // session. Restart after a beat unless we were torn down.
+    function start() {
+      run().catch(() => {
+        if (!cancelled) setTimeout(start, RESTART_GAP_MS);
+      });
+    }
+    start();
+
+    return () => {
+      cancelled = true;
+      pending.forEach(clearTimeout);
+      pending.clear();
+    };
   }, []);
 
   return (
-    <div className="agent-chat">
-      <div className="agent-chat-header">
+    <div className="agent-chat" role="img" aria-label={ARIA_LABEL}>
+      <div className="agent-chat-header" aria-hidden="true">
         <div className="agent-chat-dots">
           <span />
           <span />
@@ -121,15 +163,16 @@ export function AgentChat() {
         </div>
         <span className="agent-chat-title">claude code</span>
       </div>
-      <div className="agent-chat-body">
+      <div className={`agent-chat-body${fading ? " chat-fade" : ""}`}>
         {lines.map((line, i) => {
           const displayed = line.text.slice(0, line.charCount);
-          const isTyping = line.charCount < line.text.length;
-          const fadeClass = line.fading ? " chat-fade" : "";
+          const isTyping = !line.stamped && line.charCount < line.text.length;
+          const dimClass = dimmed && DIMMABLE.has(line.kind) ? " chat-dim" : "";
+          const stampClass = line.stamped ? " chat-stamp" : "";
 
-          if (line.type === "user") {
+          if (line.kind === "user") {
             return (
-              <div key={i} className={`chat-line chat-user${fadeClass}`}>
+              <div key={i} className={`chat-line chat-user${dimClass}`}>
                 <span className="chat-prompt">&gt;</span>
                 <span>
                   {displayed}
@@ -139,37 +182,45 @@ export function AgentChat() {
             );
           }
 
-          if (line.type === "tool") {
+          if (line.kind === "divider") {
             return (
-              <div key={i} className={`chat-line chat-tool-wrap${fadeClass}`}>
-                <div className="chat-tool-label">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="4 17 10 11 4 5" />
-                    <line x1="12" y1="19" x2="20" y2="19" />
-                  </svg>
-                  <span>bash</span>
-                </div>
-                <pre className="chat-tool-code">
-                  {displayed}
-                  {isTyping && <span className="chat-cursor" />}
-                </pre>
+              <div key={i} className={`chat-line chat-divider${stampClass}`}>
+                <span>{line.text}</span>
               </div>
             );
           }
 
-          if (line.type === "agent") {
-            return (
-              <div key={i} className={`chat-line chat-agent${fadeClass}`}>
-                <span>
-                  {displayed}
-                  {isTyping && <span className="chat-cursor" />}
-                </span>
-              </div>
-            );
-          }
+          const kindClass = {
+            tool: "chat-tool-call",
+            result: "chat-result",
+            agent: "chat-agent-line",
+            report: "chat-report",
+            "report-warn": "chat-report chat-warn",
+          }[line.kind];
+          const dotClass = {
+            tool: " chat-dot--ok",
+            result: "",
+            agent: "",
+            report: " chat-dot--ok",
+            "report-warn": " chat-dot--warn",
+          }[line.kind];
 
-          return null;
+          return (
+            <div key={i} className={`chat-line ${kindClass}${dimClass}${stampClass}`}>
+              <span className={`chat-dot${dotClass}`}>{line.kind === "result" ? "⎿" : "⏺"}</span>{" "}
+              {displayed}
+              {isTyping && <span className="chat-cursor" />}
+            </div>
+          );
         })}
+        {idleVisible && (
+          <div className="chat-line chat-user chat-stamp">
+            <span className="chat-prompt">&gt;</span>
+            <span>
+              <span className="chat-cursor" />
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
