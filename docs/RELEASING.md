@@ -12,8 +12,16 @@ Before tagging:
 
 1. update `Cargo.toml`
 2. update `CHANGELOG.md`
-3. verify `cargo test --locked`
+3. verify `cargo test --locked` — this includes the skill drift guard
+   (`tests/skill_docs.rs`), which fails if `skills/schedx/` documents a command
+   the CLI no longer has, or if the installed `SKILL.md` loses its frontmatter
 4. verify `cargo package --locked`
+
+The agent skill (`skills/schedx/`) is embedded in the binary and stamped with
+`CARGO_PKG_VERSION` at build time, so it version-matches automatically — there
+is no separate file to bump. Users refresh after upgrading with
+`schedx setup --force`. If a release renames or removes a CLI command, update
+`skills/schedx/` in the same change or step 3 will fail.
 
 ## Release Pipeline
 

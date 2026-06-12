@@ -114,6 +114,34 @@ in [docs/EXAMPLES.md](docs/EXAMPLES.md#the-schedxyaml-way).
 - **Local-first** — plain files under `~/.schedx/`; no cloud, no daemon, no database; atomic writes
 - **System-native tick** — systemd (Linux) and launchd (macOS) provide the heartbeat; scheduling decisions stay in schedx
 
+## Use schedx from your AI agent
+
+schedx ships an agent skill — a `SKILL.md` that teaches Claude Code, Codex,
+Gemini CLI, Cursor, and opencode how to drive schedx. Install it once and your
+agent can schedule, list, and manage jobs on your behalf.
+
+```bash
+npx skills add Alireza29675/schedx
+```
+
+That installs the skill into every agent it finds. Target one with `-a`
+(`claude-code`, `codex`, `cursor`, `gemini-cli`, `opencode`):
+
+```bash
+npx skills add Alireza29675/schedx -a claude-code
+```
+
+No Node? `schedx setup` installs the same skill straight from the binary — no
+network, and version-matched to your installed schedx so it never drifts:
+
+```bash
+schedx setup           # detect your agents and install for each
+schedx setup --list    # show what's installed and its version
+```
+
+Both paths write the same canonical skill (`skills/schedx/`). See the
+[skill reference](skills/schedx/reference.md) for everything the agent learns.
+
 ## Why I Built This
 
 AI agents are great at doing things right now. But most real work happens over
