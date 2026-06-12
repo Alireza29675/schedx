@@ -32,36 +32,50 @@ curl -fsSL https://raw.githubusercontent.com/Alireza29675/schedx/main/install.sh
 
 ## Quick Start
 
-```bash
-# Run something every hour
-schedx add "every 1h" --run "echo hello"
+Five minutes, three steps: schedule a job, watch it work, then put your schedules in a file.
 
-# Remind me in 30 minutes
+### 1. Schedule your first job
+
+```bash
+schedx add "every 1h" --run "echo hello"
+```
+
+That's the whole shape of schedx: a schedule plus an action. The schedule reads
+like you'd say it (`every 5m`, `in 30m`, `0 9 * * 1-5`, an ISO timestamp), and
+the action is one of three kinds:
+
+```bash
+# A shell command
 schedx add "in 30m" --run "say 'break time'"
 
-# Post to Slack every weekday morning
+# A webhook
 schedx add "0 9 * * 1-5" \
   --webhook https://hooks.slack.com/services/T00/B00/xxx \
   --method POST \
   --header "Content-Type: application/json" \
   --body '{"text":"Good morning"}'
 
-# Ask an AI agent for a weekly PR summary
+# An AI agent prompt
 schedx add "0 16 * * 5" \
   --prompt "Summarize this week's open pull requests"
-
-# Manage your jobs
-schedx list
-schedx history
-schedx logs <job-id>
-schedx pause <job-id>
-schedx resume <job-id>
-schedx rm <job-id>
 ```
 
-## Declare Everything in One File
+### 2. Watch it work
 
-Define all your schedules declaratively in a `schedx.yaml`, then reconcile with one command:
+```bash
+schedx list             # every job, its status, and when it runs next
+schedx logs <job-id>    # the captured output of each run
+schedx history          # what ran, when, and how it went
+```
+
+Pause, resume, skip, or remove any job the same way: `schedx pause <job-id>`,
+`schedx resume <job-id>`, `schedx skip <job-id>`, `schedx rm <job-id>`.
+
+### 3. Put it in a file — `schedx.yaml`
+
+This is where schedx gets good. The moment you have more than a couple of
+jobs, stop adding them one by one — declare them all in a `schedx.yaml` and
+let schedx make reality match the file:
 
 ```yaml
 name: my-jobs
@@ -80,16 +94,27 @@ jobs:
 ```
 
 ```bash
-schedx up        # make the store match the file (idempotent, diff-based)
-schedx up --dry-run
-schedx down      # remove everything the file created
+schedx up --dry-run   # preview what would change
+schedx up             # make the job store match the file
+schedx down           # remove everything the file created
 ```
 
-`up` updates in place, corrects drift, prunes what you delete from the file, and never touches jobs you added with `schedx add`. Secrets stay out of the file via `${VAR}` expansion. See the [reference](docs/REFERENCE.md#declarative-manifests-schedxyaml).
+Edit the file, run `up` again — changed jobs update in place (history kept),
+deleted ones are pruned, drift gets corrected. Running `up` twice changes
+nothing the second time. Jobs you added with `schedx add` are **never
+touched**. Secrets stay out of the committed file with `${VAR}` expansion.
+
+The payoff: your schedules become a file you can read, version, and review.
+Put `schedx.yaml` in a repo and a new machine is one `schedx up` away from
+your whole setup. Full format and reconcile semantics in the
+[reference](docs/REFERENCE.md#declarative-manifests-schedxyaml), real recipes
+in [docs/EXAMPLES.md](docs/EXAMPLES.md#the-schedxyaml-way).
 
 ## What It Does
 
 **Three action types, one interface.** Schedule shell commands (`--run`), AI agent prompts (`--prompt`), and HTTP webhooks (`--webhook`) using the same CLI.
+
+**Declarative manifests.** Keep every schedule in a `schedx.yaml` and reconcile with `schedx up` — idempotent, drift-correcting, versionable. Think docker-compose for schedules.
 
 **Flexible scheduling.** Cron expressions, human intervals (`every 5m`, `every 2h`), one-shot timers (`in 30m`, `in 2h`), and exact ISO-8601 timestamps.
 
