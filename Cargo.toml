@@ -27,7 +27,7 @@ cron = "0.15"
 nanoid = "0.4"
 ureq = { version = "3", default-features = false, features = ["json", "rustls"] }
 fs4 = "0.12"
-dirs = "6"
+dirs = "7"
 shell-words = "1"
 url = "2"
 ctrlc = "3"
