@@ -23,7 +23,7 @@ serde_norway = "0.9"
 anyhow = "1"
 thiserror = "2"
 chrono = { version = "0.4", features = ["serde", "clock"] }
-cron = "0.15"
+cron = "0.17"
 nanoid = "0.4"
 ureq = { version = "3", default-features = false, features = ["json", "rustls"] }
 fs4 = "0.12"
