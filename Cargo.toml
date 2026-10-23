@@ -26,7 +26,7 @@ chrono = { version = "0.4", features = ["serde", "clock"] }
 cron = "0.15"
 nanoid = "0.4"
 ureq = { version = "3", default-features = false, features = ["json", "rustls"] }
-fs4 = "0.12"
+fs4 = "1.1"
 dirs = "6"
 shell-words = "1"
 url = "2"
